@@ -1,0 +1,90 @@
+ion-title {
+  text-align: center;
+  font-size: 32px;
+  font-family: 'Poppins', sans-serif;
+  color: #2c3e50;
+}
+
+ion-card {
+  margin: 15px;
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+ion-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+ion-card img {
+  max-height: 220px;
+  object-fit: cover;
+  width: 100%;
+  border-bottom: 2px solid #ecf0f1;
+}
+
+ion-card-title {
+  font-size: 1.4em;
+  font-weight: 600;
+  color: #34495e;
+  margin-top: 10px;
+}
+
+ion-card-subtitle {
+  font-size: 1.1em;
+  color: #7f8c8d;
+  margin-bottom: 10px;
+}
+
+ion-modal {
+  --background: #ffffff;
+  --border-radius: 15px;
+}
+
+ion-modal h2 {
+  font-size: 24px;
+  color: #34495e;
+  margin-bottom: 10px;
+}
+
+ion-modal img {
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+ion-modal p {
+  font-size: 16px;
+  color: #7f8c8d;
+  line-height: 1.6;
+}
+
+ion-modal h3 {
+  font-size: 20px;
+  color: #2c3e50;
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+ion-modal ol li {
+  font-size: 16px;
+  color: #34495e;
+  margin-bottom: 5px;
+}
+
+ion-text h3 {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+ion-button {
+  --background: #3498db;
+  --background-hover: #2980b9;
+  --border-radius: 50px;
+  font-size: 16px;
+  padding: 10px 20px;
+}

@@ -1,27 +1,89 @@
-#container {
+ion-content {
+  --ion-background-color: #f4f4f4;
+}
+
+ion-title {
   text-align: center;
-
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  font-weight: bold;
+  color: #333;
 }
 
-#container strong {
-  font-size: 20px;
-  line-height: 26px;
+ion-card {
+  margin: 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-#container p {
-  font-size: 16px;
-  line-height: 22px;
-
-  color: #8c8c8c;
-
-  margin: 0;
+ion-card img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
 }
 
-#container a {
-  text-decoration: none;
+ion-header ion-toolbar:nth-child(2) {
+  --background: #4a4a4a;
 }
+
+ion-header ion-toolbar:nth-child(2) ion-title {
+  color: #ffffff;
+  font-size: 1.2em;
+  text-transform: uppercase;
+}
+
+.vinilos-scroll-container {
+  display: flex;
+  overflow-x: auto;
+  padding: 16px;
+  scroll-snap-type: x mandatory;
+}
+
+.vinilo-card {
+  flex: 0 0 auto;
+  width: 200px;
+  margin-right: 16px;
+  scroll-snap-align: start;
+  transition: transform 0.3s ease;
+}
+
+.vinilo-card:hover {
+  transform: scale(1.05);
+}
+
+.vinilo-card img {
+  height: 200px;
+  object-fit: cover;
+}
+
+.vinilo-card ion-card-title {
+  font-size: 1em;
+  font-weight: bold;
+  color: #333;
+  text-align: center;
+  padding: 8px;
+}
+
+.vinilos-scroll-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.vinilos-scroll-container::-webkit-scrollbar-thumb {
+  background-color: #888;
+  border-radius: 3px;
+}
+
+.vinilos-scroll-container::-webkit-scrollbar-track {
+  background-color: #f1f1f1;
+}
+ion-footer {
+  background-color: #f8f8f8; 
+  ion-toolbar {
+    display: flex;
+    justify-content: center; 
+    ion-title {
+      font-size: 16px;
+    }
+  }
+}
+

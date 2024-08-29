@@ -11,6 +11,10 @@ const routes: Routes = [
     redirectTo: 'home',
     pathMatch: 'full'
   },
+  {
+    path: 'vinilos',
+    loadChildren: () => import('./vinilos/vinilos.module').then( m => m.VinilosPageModule)
+  }
 ];
 
 @NgModule({

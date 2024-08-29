@@ -37,7 +37,12 @@ const routes: Routes = [
     path: '',
     redirectTo: 'login',
     pathMatch: 'full'
+  },
+  {
+    path: 'vinilo-crud',
+    loadChildren: () => import('./vinilo-crud/vinilo-crud.module').then( m => m.ViniloCrudPageModule)
   }
+
 ];
 
 @NgModule({

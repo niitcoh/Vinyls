@@ -102,7 +102,7 @@ export class HomePage implements OnInit, OnDestroy {
     'assets/img/banner3.png'
   ];
 
-  currentBannerIndex = 0; // Asegúrate de que esto esté definido
+  currentBannerIndex = 0; 
   bannerInterval: any;
 
   ngOnInit() {

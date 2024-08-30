@@ -1,0 +1,58 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Editor de Perfiles</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-list>
+    <ion-item *ngFor="let user of users">
+      <ion-label>{{ user.email }} ({{ user.role }})</ion-label>
+      <ion-button fill="clear" (click)="selectUser(user)">Editar</ion-button>
+      <ion-button fill="clear" color="danger" (click)="deleteUser(user.email)">Eliminar</ion-button>
+    </ion-item>
+  </ion-list>
+
+  <ng-container *ngIf="selectedUser">
+    <ion-item>
+      <ion-label position="stacked">Correo</ion-label>
+      <ion-input [(ngModel)]="selectedUser.email" readonly></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Contraseña</ion-label>
+      <ion-input [(ngModel)]="selectedUser.password" type="password"></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label>Rol</ion-label>
+      <ion-select [(ngModel)]="selectedUser.role">
+        <ion-select-option value="user">Usuario</ion-select-option>
+        <ion-select-option value="admin">Administrador</ion-select-option>
+      </ion-select>
+    </ion-item>
+  </ng-container>
+
+  <ng-container *ngIf="!selectedUser">
+    <ion-item>
+      <ion-label position="stacked">Correo</ion-label>
+      <ion-input [(ngModel)]="newUser.email"></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Contraseña</ion-label>
+      <ion-input [(ngModel)]="newUser.password" type="password"></ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label>Rol</ion-label>
+      <ion-select [(ngModel)]="newUser.role">
+        <ion-select-option value="user">Usuario</ion-select-option>
+        <ion-select-option value="admin">Administrador</ion-select-option>
+      </ion-select>
+    </ion-item>
+  </ng-container>
+
+  <ion-button expand="block" (click)="saveUser()">Guardar</ion-button>
+  <ion-button expand="block" color="light" (click)="resetForm()">Nuevo Usuario</ion-button>
+</ion-content>

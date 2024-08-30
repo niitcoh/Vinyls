@@ -224,6 +224,84 @@ export class VinilosPage implements OnInit {  //Añadir los vinilos
       stock: 10,
       precio: 33.900
     },
+    {
+      id: 9,
+      titulo: 'Scoring the End of the World',
+      artista: 'Motionless in White',
+      imagen: 'assets/img/scoring.jpg',
+      descripcion: [
+        'Scoring the End of the World —en español: Anotando el fin del mundo— es el sexto álbum de estudio de la banda estadounidense de metalcore Motionless in White. Fue lanzado el 10 de junio de 2022 a través de Roadrunner Records. El álbum fue producido por Drew Fulk y Justin DeBlieck.'
+      ],
+      tracklist: [
+        'Meltdown',
+        'Sign of Life',
+        'Werewolf',
+        'Porcelain',
+        'Slaughterhouse',
+        'Masterpiece',
+        'Cause of Death',
+        'We Become the Night',
+        'Burned at Both Ends II',
+        'B.F.B.T.G.: Corpse Nation',
+        'Cyberhex',
+        'Red, White & Boom',
+        'Scoring the End of the World'
+      ],
+      stock: 10,
+      precio: 31.990
+    },
+    {
+      id: 10,
+      titulo: 'For those that wish to exist',
+      artista: 'Architects',
+      imagen: 'assets/img/for.jpg',
+      descripcion: [
+        'For Those That Wish to Exist es el noveno álbum de estudio de la banda británica de metalcore Architects. Se lanzó el 26 de febrero de 2021 a través de Epitaph Records. El álbum fue producido por Dan Searle y Josh Middleton.​​'
+      ],
+      tracklist: [
+        'Do You Dream of Armageddon',
+        'Black Lungs',
+        'Giving Blood',
+        'Discourse Is Dead',
+        'Dead Butterflies',
+        'An Ordinary Extinction',
+        'Impermanence',
+        'Flight Without Feathers',
+        'Little Wonder',
+        'Animals',
+        'Libertine',
+        'Goliath',
+        'Demi God',
+        'Meteor',
+        'Dying Is Absolutely Safe'
+      ],
+      stock: 10,
+      precio: 34.990
+    },
+    {
+      id: 11,
+      titulo: 'Disguise',
+      artista: 'Motionless in White',
+      imagen: 'assets/img/disguise.jpg',
+      descripcion: [
+        'Disguise —en español: Disfraz— es el quinto álbum de estudio de la banda estadounidense de metal gótico, Motionless in White, fue lanzado el 7 de junio a través de Roadrunner Records, es el segundo álbum que es lanzado a través de esta compañía tras su salida de Fearless Records.​ ​'
+      ],
+      tracklist: [
+        'Disguise',
+        'Headache',
+        '</c0de>',
+        'Thoughts & Prayers',
+        'Legacy',
+        'Undead Ahead 2: The Tale of the Midnight Ride',
+        'Holding on to Smoke',
+        'Another Life',
+        'Broadcasting from Beyond the Grave: Death Inc.',
+        'Brand New Numb',
+        'Catharsis'
+      ],
+      stock: 10,
+      precio: 28.990
+    },
   ];
 
   vinilosFiltrados: Vinilo[] = [];

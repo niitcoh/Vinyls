@@ -42,7 +42,17 @@ const routes: Routes = [
     path: 'vinilo-crud',
     loadChildren: () => import('./vinilo-crud/vinilo-crud.module').then( m => m.ViniloCrudPageModule)
     
-  }
+  },
+  {
+    path: 'cart',
+    loadChildren: () => import('./cart/cart.module').then( m => m.CartPageModule)
+  },
+  {
+    path: 'profile-edit',
+    loadChildren: () => import('./profile-edit/profile-edit.module').then(m => m.ProfileEditPageModule)
+  },
+  
+
 
 ];
 

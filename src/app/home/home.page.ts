@@ -1,15 +1,5 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-
-interface Vinilo {
-  id: number;
-  titulo: string;
-  artista: string;
-  imagen: string;
-  descripcion: string[];
-  tracklist: string[];
-  stock: number;
-  precio: number;
-}
+import { CartService, Vinyl } from '../services/cart.service';
 
 @Component({
   selector: 'app-home',
@@ -17,7 +7,7 @@ interface Vinilo {
   styleUrls: ['home.page.scss'],
 })
 export class HomePage implements OnInit, OnDestroy {
-  vinilosDestacados: Vinilo[] = [
+  vinilosDestacados: Vinyl[] = [
     {
       id: 5,
       titulo: 'Sempiternal',
@@ -92,10 +82,9 @@ export class HomePage implements OnInit, OnDestroy {
     },
   ];
 
-  viniloSeleccionado: Vinilo | null = null;
+  viniloSeleccionado: Vinyl | null = null;
   mostrarDescripcionDetalle: 'descripcion' | 'tracklist' = 'descripcion';
 
-  // Array de URLs para los banners
   banners: string[] = [
     'assets/img/banner.jpg',
     'assets/img/banner2.jpg',
@@ -104,6 +93,8 @@ export class HomePage implements OnInit, OnDestroy {
 
   currentBannerIndex = 0; 
   bannerInterval: any;
+
+  constructor(private cartService: CartService) {}
 
   ngOnInit() {
     this.startBannerRotation();
@@ -118,10 +109,10 @@ export class HomePage implements OnInit, OnDestroy {
   startBannerRotation() {
     this.bannerInterval = setInterval(() => {
       this.currentBannerIndex = (this.currentBannerIndex + 1) % this.banners.length;
-    }, 4000); // Cambiar de banner cada 4 segundos
+    }, 4000);
   }
 
-  verDetalles(vinilo: Vinilo) {
+  verDetalles(vinilo: Vinyl) {
     this.viniloSeleccionado = vinilo;
   }
 
@@ -131,6 +122,7 @@ export class HomePage implements OnInit, OnDestroy {
 
   agregarAlCarrito() {
     if (this.viniloSeleccionado) {
+      this.cartService.addToCart(this.viniloSeleccionado);
       console.log(`Agregado al carrito: ${this.viniloSeleccionado.titulo}`);
     }
   }

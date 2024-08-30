@@ -1,9 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { IonicModule, ToastController, AlertController } from '@ionic/angular';
+import { IonicModule, ToastController, AlertController, NavController } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import { addCircleOutline, createOutline, trashOutline, listOutline } from 'ionicons/icons';
+import { AppComponent } from '../app.component';
 
 interface Vinilo {
   id: number;
@@ -30,12 +31,24 @@ export class ViniloCrudPage implements OnInit {
   viniloEditando: Vinilo | null = null;
   activeSectionPage: 'add' | 'edit' | 'delete' | 'view' = 'view';
 
-  constructor(private toastController: ToastController, private alertController: AlertController) {
+  constructor(
+    private toastController: ToastController, 
+    private alertController: AlertController,
+    private navCtrl: NavController
+  ) {
     addIcons({ addCircleOutline, createOutline, trashOutline, listOutline });
   }
 
   ngOnInit() {
+    this.checkLoginStatus();
     this.loadVinilos();
+  }
+
+  checkLoginStatus() {
+    if (!AppComponent.isLoggedIn || AppComponent.userRole !== 'admin') {
+      this.navCtrl.navigateRoot('/home');
+      this.presentToast('Acceso denegado. Solo administradores pueden gestionar vinilos.');
+    }
   }
 
   loadVinilos() {

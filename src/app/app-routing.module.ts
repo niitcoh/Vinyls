@@ -41,6 +41,7 @@ const routes: Routes = [
   {
     path: 'vinilo-crud',
     loadChildren: () => import('./vinilo-crud/vinilo-crud.module').then( m => m.ViniloCrudPageModule)
+    
   }
 
 ];

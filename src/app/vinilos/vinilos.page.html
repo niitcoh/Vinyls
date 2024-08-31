@@ -60,7 +60,7 @@
         </div>
 
         <ion-text color="primary">
-          <h3>Precio: ${{ viniloSeleccionado?.precio?.toFixed(3) ?? 'N/A' }}</h3>
+          <h3>Precio: {{ viniloSeleccionado?.precio | currency:'CLP':'symbol-narrow':'1.0-0' }}</h3>
         </ion-text>
         <ion-text color="medium">
           <p>Stock disponible: {{ viniloSeleccionado?.stock ?? 'N/A' }}</p>

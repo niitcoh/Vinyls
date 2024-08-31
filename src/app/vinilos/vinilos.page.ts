@@ -1,4 +1,7 @@
 import { Component, OnInit } from '@angular/core';
+import { CartService } from '../services/cart.service';  // Importa el carrito
+import { NavController } from '@ionic/angular';
+import { AppComponent } from '../app.component';
 
 interface Vinilo {
   id: number;
@@ -42,7 +45,7 @@ export class VinilosPage implements OnInit {  //Añadir los vinilos
         'Blue'
       ],
       stock: 10,
-      precio: 39.990
+      precio: 39990
     },
     {
       id: 2,
@@ -64,7 +67,7 @@ export class VinilosPage implements OnInit {  //Añadir los vinilos
         '​&burn by Billie Eilish & Vince Staples',
       ],
       stock: 10,
-      precio: 29.990
+      precio: 29990
     },
     {
       id: 3,
@@ -93,7 +96,7 @@ export class VinilosPage implements OnInit {  //Añadir los vinilos
         'Male Fantasy'
       ],
       stock: 10,
-      precio: 25.990
+      precio: 25990
     },
     {
       id: 4,
@@ -120,7 +123,7 @@ export class VinilosPage implements OnInit {  //Añadir los vinilos
         '​goodbye'
       ],
       stock: 10,
-      precio: 21.990
+      precio: 21990
     },
     {
       id: 5,
@@ -144,7 +147,7 @@ export class VinilosPage implements OnInit {  //Añadir los vinilos
         'Hospital for Souls'
       ],
       stock: 10,
-      precio: 35.990
+      precio: 35990
     },
     {
       id: 6,
@@ -168,7 +171,7 @@ export class VinilosPage implements OnInit {  //Añadir los vinilos
         'Oh No'
       ],
       stock: 10,
-      precio: 41.990
+      precio: 41990
     },
     {
       id: 7,
@@ -194,7 +197,7 @@ export class VinilosPage implements OnInit {  //Añadir los vinilos
         'Falling Down'
       ],
       stock: 10,
-      precio: 33.900
+      precio: 33900
     },
     {
       id: 8,
@@ -222,7 +225,7 @@ export class VinilosPage implements OnInit {  //Añadir los vinilos
         'Miracle'
       ],
       stock: 10,
-      precio: 33.900
+      precio: 33900
     },
     {
       id: 9,
@@ -248,7 +251,7 @@ export class VinilosPage implements OnInit {  //Añadir los vinilos
         'Scoring the End of the World'
       ],
       stock: 10,
-      precio: 31.990
+      precio: 31990
     },
     {
       id: 10,
@@ -276,7 +279,7 @@ export class VinilosPage implements OnInit {  //Añadir los vinilos
         'Dying Is Absolutely Safe'
       ],
       stock: 10,
-      precio: 34.990
+      precio: 34990
     },
     {
       id: 11,
@@ -300,36 +303,39 @@ export class VinilosPage implements OnInit {  //Añadir los vinilos
         'Catharsis'
       ],
       stock: 10,
-      precio: 28.990
+      precio: 28990
     },
   ];
 
   vinilosFiltrados: Vinilo[] = [];
 
   viniloSeleccionado: Vinilo | null = null;
-
+  
   mostrarDescripcionDetalle: 'descripcion' | 'tracklist' = 'descripcion';
 
-  constructor() { }
+  constructor(private cartService: CartService, private navCtrl: NavController) {} 
 
-  ngOnInit() { this.vinilosFiltrados = this.vinilos; }
+
+  ngOnInit() {
+    this.vinilosFiltrados = this.vinilos;
+  }
 
   buscarVinilos(event: any) {
-    const textoBusqueda = event.target.value.toLowerCase(); //Busca solamente por el nombre del album o artista
+    const textoBusqueda = event.target.value.toLowerCase();
 
     if (textoBusqueda && textoBusqueda.trim() !== '') {
-      this.vinilosFiltrados = this.vinilos.filter(vinilo => 
+      this.vinilosFiltrados = this.vinilos.filter(vinilo =>
         vinilo.titulo.toLowerCase().includes(textoBusqueda) ||
         vinilo.artista.toLowerCase().includes(textoBusqueda)
       );
     } else {
-      this.vinilosFiltrados = this.vinilos; // si la busqueda esta vacia , muestra todos los vinilos
+      this.vinilosFiltrados = this.vinilos;
     }
   }
 
   mostrarDescripcion(vinilo: Vinilo) {
     this.viniloSeleccionado = vinilo;
-    this.mostrarDescripcionDetalle = 'descripcion';  // Separa la tracklist y la descripcion en la card
+    this.mostrarDescripcionDetalle = 'descripcion';
   }
 
   cerrarDescripcion() {
@@ -338,7 +344,13 @@ export class VinilosPage implements OnInit {  //Añadir los vinilos
 
   agregarAlCarrito() {
     if (this.viniloSeleccionado) {
-      console.log(`Agregado al carrito: ${this.viniloSeleccionado.titulo}`);
+      if (AppComponent.isLoggedIn) { // Verifica si el usuario inicio sesion
+        this.cartService.addToCart(this.viniloSeleccionado); 
+        console.log(`Agregado al carrito: ${this.viniloSeleccionado.titulo}`);
+        this.cerrarDescripcion(); 
+      } else {
+        alert('Por favor, inicia sesión para agregar al carrito.');
+      }
     }
   }
 }

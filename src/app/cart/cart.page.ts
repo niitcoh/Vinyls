@@ -19,6 +19,15 @@ export class CartPage implements OnInit {
     });
   }
 
+  getFormattedTotal() {
+    return this.total.toLocaleString('es-CL', {
+      style: 'currency',
+      currency: 'CLP',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    });
+  }
+
   removeItem(vinylId: number) {
     this.cartService.removeFromCart(vinylId);
   }

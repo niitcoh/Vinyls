@@ -1,5 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CartService, Vinyl } from '../services/cart.service';
+import { AppComponent } from '../app.component';
+
 
 @Component({
   selector: 'app-home',
@@ -30,7 +32,7 @@ export class HomePage implements OnInit, OnDestroy {
         'Hospital for Souls'
       ],
       stock: 10,
-      precio: 35.990
+      precio: 35990
     },
     {
       id: 6,
@@ -54,7 +56,7 @@ export class HomePage implements OnInit, OnDestroy {
         'Oh No'
       ],
       stock: 10,
-      precio: 41.990
+      precio: 41990
     },
     {
       id: 7,
@@ -78,7 +80,7 @@ export class HomePage implements OnInit, OnDestroy {
         'Falling Down'
       ],
       stock: 10,
-      precio: 33.900
+      precio: 33900
     },
   ];
 
@@ -122,8 +124,13 @@ export class HomePage implements OnInit, OnDestroy {
 
   agregarAlCarrito() {
     if (this.viniloSeleccionado) {
-      this.cartService.addToCart(this.viniloSeleccionado);
-      console.log(`Agregado al carrito: ${this.viniloSeleccionado.titulo}`);
+      if (AppComponent.isLoggedIn) { // Verifica si el usuario inicio sesion
+        this.cartService.addToCart(this.viniloSeleccionado); 
+        console.log(`Agregado al carrito: ${this.viniloSeleccionado.titulo}`);
+        this.cerrarDescripcion(); 
+      } else {
+        alert('Por favor, inicia sesión para agregar al carrito.');
+      }
     }
   }
 }

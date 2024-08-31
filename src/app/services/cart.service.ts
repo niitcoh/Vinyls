@@ -50,4 +50,8 @@ export class CartService {
   getTotal() {
     return this.cart.reduce((total, item) => total + (item.precio * (item.quantity || 1)), 0);
   }
+
+  getCartItemCount() {
+    return this.cart.reduce((count, item) => count + (item.quantity || 1), 0);
+  }
 }

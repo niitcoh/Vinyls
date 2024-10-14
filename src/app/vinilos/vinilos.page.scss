@@ -1,90 +1,205 @@
-ion-title {
-  text-align: center;
-  font-size: 32px;
-  font-family: 'Poppins', sans-serif;
-  color: #2c3e50;
+// Variables de colores
+$primary-color: #8B4513; // Saddle Brown
+$secondary-color: #DEB887; // Burlywood
+$accent-color: #CD853F; // Peru
+$background-color: #FFF8DC; // Cornsilk
+$card-background: #FAEBD7; // Antique White
+$text-color: #3E2723; // Dark Brown
+$light-text-color: #FFF8DC; // Cornsilk
+
+@mixin vintage-border {
+  border: 2px solid $primary-color;
+  box-shadow: 3px 3px 0 rgba($primary-color, 0.5);
 }
 
+// Global Styles
+ion-content {
+  --background: #{$background-color};
+  font-family: 'Georgia', serif;
+}
+
+ion-header {
+  ion-toolbar {
+    --background: #{$primary-color};
+  }
+
+  ion-title {
+    text-align: center;
+    font-size: 32px;
+    font-family: 'Playfair Display', serif;
+    color: $light-text-color;
+  }
+}
+
+// Searchbar estilo
+ion-searchbar.custom {
+  --background: #{$card-background};
+  --color: #{$text-color};
+  --placeholder-color: #{$accent-color};
+  --icon-color: #{$primary-color};
+  --border-radius: 0;
+  @include vintage-border;
+  margin: 16px auto;
+  max-width: 600px;
+  width: calc(100% - 32px);
+  
+  .searchbar-input {
+    padding-inline-start: 44px !important;
+    padding-inline-end: 44px !important;
+  }
+
+  .searchbar-search-icon {
+    left: 12px;
+  }
+
+  .searchbar-clear-button {
+    right: 12px;
+  }
+}
+
+ion-grid {
+  padding: 16px;
+}
+
+// Estilo de las cards
 ion-card {
-  margin: 15px;
+  margin: 8px;
   cursor: pointer;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  border-radius: 10px;
+  @include vintage-border;
+  background-color: $card-background;
+  border-radius: 0;
   overflow: hidden;
+  transition: transform 0.3s ease;
+
+  &:hover {
+    transform: translateY(-5px);
+  }
+
+  img {
+    max-height: 220px;
+    object-fit: cover;
+    width: 100%;
+    filter: sepia(20%);
+  }
+
+  ion-card-header {
+    padding: 16px;
+  }
+
+  ion-card-title {
+    font-size: 1.2em;
+    font-weight: 600;
+    color: $text-color;
+    font-family: 'Playfair Display', serif;
+    margin-bottom: 8px;
+  }
+
+  ion-card-subtitle {
+    font-size: 1em;
+    color: $accent-color;
+    font-style: italic;
+  }
 }
 
-ion-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-}
-
-ion-card img {
-  max-height: 220px;
-  object-fit: cover;
-  width: 100%;
-  border-bottom: 2px solid #ecf0f1;
-}
-
-ion-card-title {
-  font-size: 1.4em;
-  font-weight: 600;
-  color: #34495e;
-  margin-top: 10px;
-}
-
-ion-card-subtitle {
-  font-size: 1.1em;
-  color: #7f8c8d;
-  margin-bottom: 10px;
-}
-
+// Modal Styles
 ion-modal {
-  --background: #ffffff;
-  --border-radius: 15px;
-}
+  --background: #{$background-color};
+  
+  ion-header ion-toolbar {
+    --background: #{$primary-color};
 
-ion-modal h2 {
-  font-size: 24px;
-  color: #34495e;
-  margin-bottom: 10px;
-}
+    ion-title {
+      color: $light-text-color;
+    }
 
-ion-modal img {
-  width: 100%;
-  height: auto;
-  border-radius: 10px;
-  margin-bottom: 20px;
-}
+    ion-button {
+      --color: #{$light-text-color};
+    }
+  }
+  
+  ion-content {
+    --padding-top: 24px;
+    --padding-bottom: 24px;
+    --padding-start: 24px;
+    --padding-end: 24px;
+  }
+  
+  img {
+    @include vintage-border;
+    width: 100%;
+    max-height: 300px;
+    object-fit: cover;
+    margin-bottom: 20px;
+  }
+  
+  h2 {
+    color: $primary-color;
+    font-family: 'Playfair Display', serif;
+    font-size: 24px;
+    margin-bottom: 16px;
+  }
+  
+  ion-segment {
+    margin-top: 24px;
+    margin-bottom: 24px;
+    --background: #{$card-background};
+    
+    ion-segment-button {
+      --color: #{$text-color};
+      --color-checked: #{$light-text-color};
+      --background-checked: #{$accent-color};
+      font-family: 'Georgia', serif;
+    }
+  }
+  
+  p {
+    color: $text-color;
+    font-size: 16px;
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
 
-ion-modal p {
-  font-size: 16px;
-  color: #7f8c8d;
-  line-height: 1.6;
-}
+  h3 {
+    color: $primary-color;
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    margin-top: 24px;
+    margin-bottom: 16px;
+  }
 
-ion-modal h3 {
-  font-size: 20px;
-  color: #2c3e50;
-  margin-top: 20px;
-  margin-bottom: 10px;
-}
+  ol {
+    padding-left: 24px;
+    color: $text-color;
 
-ion-modal ol li {
-  font-size: 16px;
-  color: #34495e;
-  margin-bottom: 5px;
-}
+    li {
+      margin-bottom: 8px;
+    }
+  }
+  
+  ion-text {
+    h3 {
+      color: $accent-color;
+      font-size: 22px;
+      font-weight: bold;
+      margin-top: 24px;
+    }
 
-ion-text h3 {
-  font-size: 20px;
-  font-weight: bold;
-}
+    p {
+      color: $text-color;
+      font-style: italic;
+    }
+  }
+  
+  ion-button {
+    margin-top: 24px;
+    --background: #{$accent-color};
+    --color: #{$light-text-color};
+    --border-radius: 0;
+    @include vintage-border;
+    font-family: 'Georgia', serif;
 
-ion-button {
-  --background: #3498db;
-  --background-hover: #2980b9;
-  --border-radius: 50px;
-  font-size: 16px;
-  padding: 10px 20px;
+    &[disabled] {
+      opacity: 0.5;
+    }
+  }
 }

@@ -1,57 +1,127 @@
+// Variables (manteniendo las existentes)
+$primary-color: #8B4513; // Saddle Brown
+$secondary-color: #DEB887; // Burlywood
+$accent-color: #CD853F; // Peru
+$background-color: #FFF8DC; // Cornsilk
+$card-background: #FAEBD7; // Antique White
+$text-color: #3E2723; // Dark Brown
+$light-text-color: #FFF8DC; // Cornsilk
+
+@mixin vintage-border {
+  border: 2px solid $primary-color;
+  box-shadow: 3px 3px 0 rgba($primary-color, 0.5);
+}
+
+ion-content {
+  --background: none;
+  background-image: url('/assets/img/asd.jpg');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center center;
+  font-family: 'Georgia', serif;
+
+  // Eliminado el overlay difuminado
+  &::before {
+    content: none;
+  }
+}
+
 .login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
   max-width: 400px;
-  margin: 100px auto;
-  padding: 20px;
-  
-  backdrop-filter: blur(0.5rem);
-  border-radius: 10px;
-  box-shadow: 0px 4px 6px rgba(207, 37, 37, 0.1);
+  height: auto;
+  min-height: 400px;
+  padding: 30px;
+  background-color: rgba($card-background, 0.9);
+  @include vintage-border;
+  z-index: 1;
+  overflow-y: auto;
 }
 
 h2 {
+  color: $primary-color;
+  font-family: 'Playfair Display', serif;
+  font-size: 2.2em;
+  margin-bottom: 30px;
   text-align: center;
-  margin-bottom: 20px;
-  color: whitesmoke
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+#login-form {
+  width: 100%;
+  max-width: 300px;
 }
 
 .input-box {
   position: relative;
-  margin-bottom: 15px;
+  margin-bottom: 25px;
 }
 
-.input-box ion-input {
+ion-input {
   width: 100%;
-  padding: 10px;
-  border-radius: 5px;
-  border: 1px solid #ccc;
-  background-color: #fff;
-}
-
-input:focus {
+  padding: 15px 10px 10px;
+  font-size: 16px;
+  color: $text-color;
+  border: 1px solid $primary-color;
+  background-color: $light-text-color;
   outline: none;
-  border-color: #007bff;
+  transition: border-color 0.3s;
+
+  &:focus {
+    border-color: $accent-color;
+  }
 }
 
 label {
   position: absolute;
-  top: -12px;
+  top: -20px;
   left: 10px;
-  font-size: 12px;
-  color: #ffffff;
   padding: 0 5px;
+  font-size: 14px;
+  color: $primary-color;
+  background-color: $card-background;
+  z-index: 1;
 }
 
-span.input-line {
+a {
   display: block;
-  height: 1px;
-  background-color: #ccc;
-  position: absolute;
-  bottom: 0;
-  left: 10px;
-  right: 10px;
+  text-align: right;
+  color: $accent-color;
+  text-decoration: none;
+  margin-bottom: 20px;
+  font-style: italic;
+
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
-a{
-  color:whitesmoke
+ion-button {
+  --background: #{$primary-color};
+  --color: #{$light-text-color};
+  --border-radius: 0;
+  @include vintage-border;
+  font-family: 'Georgia', serif;
+  margin-top: 20px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: transform 0.2s;
 
+  &:hover {
+    --background: #{$accent-color};
+    transform: translateY(-2px);
+  }
+}
+
+ion-content {
+  --overflow: hidden;
 }

@@ -40,6 +40,25 @@ export class DatabaseService {
     return false;
   }
 
+  async testConnection(): Promise<boolean> {
+    console.log('Iniciando la prueba de conexión'); // <-- Nuevo
+    try {
+      await this.initializePlugin();
+      console.log('Plugin inicializado'); // <-- Nuevo
+      const isOpen = await this.openDatabase();
+      console.log('Base de datos abierta:', isOpen); // <-- Nuevo
+      if (isOpen) {
+        const testQuery = 'SELECT 1';
+        const result = await this.db.query(testQuery);
+        console.log('Resultado de la consulta:', result); // <-- Nuevo
+        return !!(result.values && result.values.length > 0);
+      }
+      return false;
+    } catch (error) {
+      console.error('Error probando la conexión', error);
+      return false;
+    }
+  }
   async createTables() {
     const queryVinyls = `
       CREATE TABLE IF NOT EXISTS vinyls (

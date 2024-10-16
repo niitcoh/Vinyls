@@ -89,14 +89,25 @@ export class ViniloCrudPage implements OnInit {
   }
 
   async crearVinilo() {
-    if (this.nuevoVinilo.titulo && this.nuevoVinilo.artista) {
+    if (this.validarVinilo(this.nuevoVinilo)) {
       this.nuevoVinilo.id = this.vinilos.length + 1;
       this.vinilos.push({...this.nuevoVinilo});
       await this.presentToast('Vinilo creado correctamente');
       this.nuevoVinilo = this.inicializarNuevoVinilo();
     } else {
-      await this.mostrarAlerta('Error', 'Por favor, completa al menos el título y el artista');
+      await this.mostrarAlerta('Error', 'Por favor, completa todos los campos requeridos y asegúrate de que el stock y el precio sean mayores que cero.');
     }
+  }
+
+  validarVinilo(vinilo: Vinilo): boolean {
+    return (
+      vinilo.titulo.trim() !== '' &&
+      vinilo.artista.trim() !== '' &&
+      vinilo.descripcion.length > 0 &&
+      vinilo.tracklist.length > 0 &&
+      vinilo.stock > 0 &&
+      vinilo.precio > 0
+    );
   }
 
   editarVinilo(vinilo: Vinilo) {
@@ -106,7 +117,7 @@ export class ViniloCrudPage implements OnInit {
   }
 
   async actualizarVinilo() {
-    if (this.viniloEditando) {
+    if (this.viniloEditando && this.validarVinilo(this.viniloEditando)) {
       const index = this.vinilos.findIndex(v => v.id === this.viniloEditando!.id);
       if (index !== -1) {
         this.vinilos[index] = {...this.viniloEditando};
@@ -115,6 +126,8 @@ export class ViniloCrudPage implements OnInit {
         await this.presentToast('Vinilo actualizado correctamente');
         this.activeSectionPage = 'view';
       }
+    } else {
+      await this.mostrarAlerta('Error', 'Por favor, completa todos los campos requeridos y asegúrate de que el stock y el precio sean mayores que cero.');
     }
   }
 

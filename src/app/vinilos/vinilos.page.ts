@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CartService } from '../services/cart.service';
-import { NavController } from '@ionic/angular';
+import { NavController, ToastController } from '@ionic/angular';
 import { AppComponent } from '../app.component';
 import { DatabaseService } from '../services/database.service';
 
@@ -29,7 +29,8 @@ export class VinilosPage implements OnInit {
   constructor(
     private cartService: CartService,
     private navCtrl: NavController,
-    private databaseService: DatabaseService
+    private databaseService: DatabaseService,
+    private toastController: ToastController
   ) {}
 
   async ngOnInit() {
@@ -47,7 +48,7 @@ export class VinilosPage implements OnInit {
       this.vinilosFiltrados = this.vinilos;
     } catch (error) {
       console.error('Error al cargar vinilos:', error);
-      // Aquí podrías mostrar un mensaje de error al usuario
+      await this.presentToast('Error al cargar vinilos. Por favor, intente más tarde.');
     }
   }
 
@@ -77,26 +78,34 @@ export class VinilosPage implements OnInit {
     if (this.viniloSeleccionado) {
       if (AppComponent.isLoggedIn) {
         try {
-          // Actualiza el stock en la base de datos
           await this.databaseService.updateVinyl({
             ...this.viniloSeleccionado,
             stock: this.viniloSeleccionado.stock - 1
           });
           
           this.cartService.addToCart(this.viniloSeleccionado);
-          console.log(`Agregado al carrito: ${this.viniloSeleccionado.titulo}`);
+          await this.presentToast(`${this.viniloSeleccionado.titulo} agregado al carrito`);
           
-          // Actualiza la lista de vinilos
           await this.cargarVinilos();
           
           this.cerrarDescripcion();
         } catch (error) {
           console.error('Error al agregar al carrito:', error);
-          // Aquí podrías mostrar un mensaje de error al usuario
+          await this.presentToast('Error al agregar al carrito. Por favor, intente de nuevo.');
         }
       } else {
-        alert('Por favor, inicia sesión para agregar al carrito.');
+        await this.presentToast('Por favor, inicia sesión para agregar al carrito.', 'warning');
       }
     }
+  }
+
+  async presentToast(message: string, color: string = 'success') {
+    const toast = await this.toastController.create({
+      message: message,
+      duration: 2000,
+      position: 'bottom',
+      color: color
+    });
+    toast.present();
   }
 }

@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CartService, Vinyl } from '../services/cart.service';
 import { AppComponent } from '../app.component';
-
+import { ToastController } from '@ionic/angular';
 
 @Component({
   selector: 'app-home',
@@ -40,7 +40,7 @@ export class HomePage implements OnInit, OnDestroy {
       artista: 'Bring me the horizon',
       imagen: 'assets/img/spirit.jpg',
       descripcion: [
-        'Thats the Spirit —en español: Ese es el espíritu— es el nombre del quinto álbum de estudio de la banda británica Bring Me the Horizon. Fue lanzado el 11 de septiembre de 2015, ​ y marca un sonido bastante alejado al de sus orígenes como una banda de metalcore.'
+        'Thats the Spirit —en español: Ese es el espíritu— es el nombre del quinto álbum de estudio de la banda británica Bring Me the Horizon. Fue lanzado el 11 de septiembre de 2015,  y marca un sonido bastante alejado al de sus orígenes como una banda de metalcore.'
       ],
       tracklist: [
         'Doomed',
@@ -96,7 +96,10 @@ export class HomePage implements OnInit, OnDestroy {
   currentBannerIndex = 0; 
   bannerInterval: any;
 
-  constructor(private cartService: CartService) {}
+  constructor(
+    private cartService: CartService,
+    private toastController: ToastController
+  ) {}
 
   ngOnInit() {
     this.startBannerRotation();
@@ -122,15 +125,25 @@ export class HomePage implements OnInit, OnDestroy {
     this.viniloSeleccionado = null;
   }
 
-  agregarAlCarrito() {
+  async agregarAlCarrito() {
     if (this.viniloSeleccionado) {
-      if (AppComponent.isLoggedIn) { // Verifica si el usuario inicio sesion
-        this.cartService.addToCart(this.viniloSeleccionado); 
-        console.log(`Agregado al carrito: ${this.viniloSeleccionado.titulo}`);
-        this.cerrarDescripcion(); 
+      if (AppComponent.isLoggedIn) {
+        this.cartService.addToCart(this.viniloSeleccionado);
+        await this.presentToast(`${this.viniloSeleccionado.titulo} agregado al carrito`);
+        this.cerrarDescripcion();
       } else {
-        alert('Por favor, inicia sesión para agregar al carrito.');
+        await this.presentToast('Por favor, inicia sesión para agregar al carrito.', 'warning');
       }
     }
+  }
+
+  async presentToast(message: string, color: string = 'success') {
+    const toast = await this.toastController.create({
+      message: message,
+      duration: 2000,
+      position: 'bottom',
+      color: color
+    });
+    toast.present();
   }
 }

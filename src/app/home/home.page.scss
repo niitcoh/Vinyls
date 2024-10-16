@@ -49,14 +49,6 @@ ion-card {
   }
 }
 
-ion-card:first-of-type {
-  margin-top: 0;
-  
-  img {
-    height: 300px;
-  }
-}
-
 ion-header ion-toolbar:nth-child(2) {
   --background: #{$secondary-color};
   
@@ -91,7 +83,7 @@ ion-header ion-toolbar:nth-child(2) {
 // Vinyl Card Styles
 .vinilo-card {
   flex: 0 0 auto;
-  width: 200px; // Ancho fijo para todas las tarjetas
+  width: 200px;
   margin-right: 20px;
   scroll-snap-align: start;
   transition: transform 0.3s ease;

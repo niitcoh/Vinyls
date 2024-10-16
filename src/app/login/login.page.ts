@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { NavController } from '@ionic/angular';
+import { NavController, ToastController } from '@ionic/angular';
 import { AppComponent } from '../app.component';
 
 @Component({
@@ -16,17 +16,30 @@ export class LoginPage {
     { email: 'user', password: '1234', role: 'user' }
   ];
 
-  constructor(private navCtrl: NavController) {}
+  constructor(
+    private navCtrl: NavController,
+    private toastController: ToastController
+  ) {}
 
-  login() {
+  async login() {
     const user = this.users.find(user => user.email === this.email && user.password === this.password);
 
     if (user) {
       AppComponent.login(user.role, user.email);
-      alert('Inicio de sesión exitoso');
+      await this.presentToast('Inicio de sesión exitoso', 'success');
       this.navCtrl.navigateForward('/home');
     } else {
-      alert('Correo electrónico o contraseña incorrectos');
+      await this.presentToast('Correo electrónico o contraseña incorrectos', 'danger');
     }
+  }
+
+  async presentToast(message: string, color: string) {
+    const toast = await this.toastController.create({
+      message: message,
+      duration: 2000,
+      position: 'bottom',
+      color: color
+    });
+    toast.present();
   }
 }

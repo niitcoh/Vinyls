@@ -1,16 +1,15 @@
 import { Component } from '@angular/core';
-import { NavController } from '@ionic/angular';
+import { NavController, MenuController } from '@ionic/angular';
 
 @Component({
   selector: 'app-root',
   templateUrl: 'app.component.html',
   styleUrls: ['app.component.scss']
 })
-export class AppComponent   
- {
+export class AppComponent {
   static isLoggedIn: boolean = false;
   static userRole: string = '';
-  static userName: string = ''; 
+  static userName: string = '';
 
   // Getter methods for easier access in templates
   get isLoggedIn(): boolean {
@@ -25,18 +24,26 @@ export class AppComponent  
     return AppComponent.userName;
   }
 
-  constructor(private navCtrl: NavController) {}
+  constructor(
+    private navCtrl: NavController,
+    private menuCtrl: MenuController
+  ) {}
 
   static login(role: string, name: string) {
     AppComponent.isLoggedIn = true;
     AppComponent.userRole = role;
-    AppComponent.userName = name; 
+    AppComponent.userName = name;
   }
 
   logout() {
     AppComponent.isLoggedIn = false;
     AppComponent.userRole = '';
-    AppComponent.userName = ''; 
-    this.navCtrl.navigateRoot('/home'); 
+    AppComponent.userName = '';
+    this.navCtrl.navigateRoot('/home');
+    this.menuCtrl.close();
+  }
+
+  closeMenu() {
+    this.menuCtrl.close();
   }
 }

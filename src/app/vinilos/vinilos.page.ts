@@ -39,13 +39,17 @@ export class VinilosPage implements OnInit {
 
   async cargarVinilos() {
     try {
-      const vinilosFromDB = await this.databaseService.getVinyls();
-      this.vinilos = vinilosFromDB.map(vinilo => ({
-        ...vinilo,
-        descripcion: vinilo.descripcion ? JSON.parse(vinilo.descripcion) : [],
-        tracklist: vinilo.tracklist ? JSON.parse(vinilo.tracklist) : []
-      }));
-      this.vinilosFiltrados = this.vinilos;
+      this.databaseService.getAllVinyls().subscribe(vinilosFromDB => {
+        this.vinilos = vinilosFromDB.map(vinilo => ({
+          ...vinilo,
+          descripcion: vinilo.descripcion || [],
+          tracklist: Array.isArray(vinilo.tracklist) ? vinilo.tracklist : (vinilo.tracklist ? JSON.parse(vinilo.tracklist) : [])
+        }));
+        this.vinilosFiltrados = this.vinilos;
+      }, error => {
+        console.error('Error al cargar vinilos:', error);
+        this.presentToast('Error al cargar vinilos. Por favor, intente más tarde.');
+      });
     } catch (error) {
       console.error('Error al cargar vinilos:', error);
       await this.presentToast('Error al cargar vinilos. Por favor, intente más tarde.');

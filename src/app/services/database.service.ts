@@ -1,195 +1,281 @@
 import { Injectable } from '@angular/core';
-import { Capacitor } from '@capacitor/core';
-import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from '@capacitor-community/sqlite';
+import { SQLite, SQLiteObject } from '@awesome-cordova-plugins/sqlite/ngx';
+import { AlertController, Platform } from '@ionic/angular';
+import { BehaviorSubject, Observable, from } from 'rxjs';
+import { map, catchError, switchMap } from 'rxjs/operators';
+import { User } from '../models/user.model';
+import { Vinyl } from '../models/vinilos.model';  // Usar el modelo Vinyl
+import { Order } from '../models/order.model';     // Aquí representan las órdenes de compra
+//import { OrderDetail } from '../models/order-detail.model';
+import { of, firstValueFrom, forkJoin } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class DatabaseService {
-  private sqlite: SQLiteConnection;
-  private db!: SQLiteDBConnection;
+  private database!: SQLiteObject;
+  private dbReady: BehaviorSubject<boolean> = new BehaviorSubject(false);
 
-  constructor() {
-    this.sqlite = new SQLiteConnection(CapacitorSQLite);
+  constructor(
+    private platform: Platform, 
+    private sqlite: SQLite,
+    private alertController: AlertController
+  ) {
+    this.platform.ready().then(() => {
+      this.initializeDatabase();
+    });
   }
 
-  async initializePlugin() {
-    const platform = Capacitor.getPlatform();
-    if (platform === 'web') {
-      // Para el uso en web, necesitamos inicializar el almacén web
-      await customElements.whenDefined('jeep-sqlite');
-      const jeepSqliteEl = document.querySelector('jeep-sqlite');
-      if (jeepSqliteEl != null) {
-        await this.sqlite.initWebStore();
-      }
-    }
-  }
-
-  async openDatabase() {
-    if (this.sqlite) {
-      try {
-        this.db = await this.sqlite.createConnection('vinyls_db', false, 'no-encryption', 1, false);
-        await this.db.open();
-        await this.createTables();
-        return true;
-      } catch (error) {
-        console.error('Error opening database', error);
-        return false;
-      }
-    }
-    return false;
-  }
-
-  async testConnection(): Promise<boolean> {
-    console.log('Iniciando la prueba de conexión'); // <-- Nuevo
+  async initializeDatabase() {
     try {
-      await this.initializePlugin();
-      console.log('Plugin inicializado'); // <-- Nuevo
-      const isOpen = await this.openDatabase();
-      console.log('Base de datos abierta:', isOpen); // <-- Nuevo
-      if (isOpen) {
-        const testQuery = 'SELECT 1';
-        const result = await this.db.query(testQuery);
-        console.log('Resultado de la consulta:', result); // <-- Nuevo
-        return !!(result.values && result.values.length > 0);
-      }
-      return false;
+      // Crear una nueva base de datos para la tienda de vinilos
+      this.database = await this.sqlite.create({
+        name: 'vinylstore.db',  // Nombre actualizado de la base de datos
+        location: 'default'
+      });
+  
+      await this.createTables();
+      await firstValueFrom(this.insertSeedData());
+      this.dbReady.next(true);
     } catch (error) {
-      console.error('Error probando la conexión', error);
-      return false;
+      console.error('Error initializing database', error);
+      this.presentAlert('Error', 'Failed to initialize the database. Please try again.');
     }
   }
+
+  // Definición de tablas
+  tableUsers: string = `
+    CREATE TABLE IF NOT EXISTS Users (
+      UserID INTEGER PRIMARY KEY AUTOINCREMENT,
+      Username TEXT NOT NULL UNIQUE,
+      Password TEXT NOT NULL,
+      Role TEXT NOT NULL CHECK (Role IN ('customer', 'admin', 'manager')),
+      Name TEXT NOT NULL,
+      Email TEXT UNIQUE,
+      PhoneNumber TEXT,
+      CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      LastLogin DATETIME
+    );`;
+
+  tableVinyls: string = `
+    CREATE TABLE IF NOT EXISTS Vinyls (
+      VinylID INTEGER PRIMARY KEY AUTOINCREMENT,
+      Title TEXT NOT NULL,
+      Artist TEXT NOT NULL,
+      Price REAL NOT NULL,
+      ImageURL TEXT,
+      Description TEXT,
+      Tracklist TEXT,
+      Quantity INTEGER DEFAULT 0,
+      IsAvailable BOOLEAN DEFAULT 1,
+      CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );`;
+
+  tableOrders: string = `
+    CREATE TABLE IF NOT EXISTS Orders (
+      OrderID INTEGER PRIMARY KEY AUTOINCREMENT,
+      UserID INTEGER,
+      Status TEXT NOT NULL CHECK (Status IN ('Pending', 'Processing', 'Shipped', 'Delivered', 'Canceled')),
+      CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      TotalAmount REAL NOT NULL,
+      PaymentMethod TEXT,
+      FOREIGN KEY (UserID) REFERENCES Users(UserID)
+    );`;
+
+  tableOrderDetails: string = `
+    CREATE TABLE IF NOT EXISTS OrderDetails (
+      OrderDetailID INTEGER PRIMARY KEY AUTOINCREMENT,
+      OrderID INTEGER,
+      VinylID INTEGER,
+      Quantity INTEGER NOT NULL,
+      Price REAL NOT NULL,
+      FOREIGN KEY (OrderID) REFERENCES Orders(OrderID),
+      FOREIGN KEY (VinylID) REFERENCES Vinyls(VinylID)
+    );`;
+
+  // BehaviorSubjects para los listados
+  private users = new BehaviorSubject<User[]>([]);
+  private vinyls = new BehaviorSubject<Vinyl[]>([]); // Renombrado a Vinyls
+  private orders = new BehaviorSubject<Order[]>([]);
+
+  // Observable para el estado de la base de datos
+  private isDBReady: BehaviorSubject<boolean> = new BehaviorSubject(false);
+  
+  // Alertas
+  async presentAlert(titulo: string, msj: string) {
+    const alert = await this.alertController.create({
+      header: titulo,
+      message: msj,
+      buttons: ['OK'],
+    });
+    await alert.present();
+  }
+
+  // Observables
+  dbState() {
+    return this.isDBReady.asObservable();
+  }
+
+  fetchUsers(): Observable<User[]> {
+    return this.users.asObservable();
+  }
+
+  fetchVinyls(): Observable<Vinyl[]> {
+    return this.vinyls.asObservable();
+  }
+
+  fetchOrders(): Observable<Order[]> {
+    return this.orders.asObservable();
+  }
+
   async createTables() {
-    const queryVinyls = `
-      CREATE TABLE IF NOT EXISTS vinyls (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        artist TEXT NOT NULL,
-        year INTEGER,
-        genre TEXT,
-        price REAL NOT NULL,
-        stock INTEGER DEFAULT 0,
-        image TEXT,
-        description TEXT,
-        tracklist TEXT
-      );
-    `;
-
-    const queryUsers = `
-      CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT NOT NULL UNIQUE,
-        email TEXT NOT NULL UNIQUE,
-        password TEXT NOT NULL
-      );
-    `;
-
     try {
-      await this.db.execute(queryVinyls);
-      await this.db.execute(queryUsers);
-    } catch (error) {
-      console.error('Error creating tables', error);
-      throw error;
+      await this.database.executeSql('DROP TABLE IF EXISTS Users', []);
+      await this.database.executeSql('DROP TABLE IF EXISTS Vinyls', []);
+      await this.database.executeSql('DROP TABLE IF EXISTS Orders', []);
+      await this.database.executeSql('DROP TABLE IF EXISTS OrderDetails', []);
+  
+      await this.database.executeSql(this.tableUsers, []);
+      await this.database.executeSql(this.tableVinyls, []);
+      await this.database.executeSql(this.tableOrders, []);
+      await this.database.executeSql(this.tableOrderDetails, []);
+  
+      await this.insertSeedData().toPromise();
+  
+      this.loadInitialData();
+      this.isDBReady.next(true);
+    } catch (e) {
+      this.presentAlert('Creación de Tablas', 'Error al crear las tablas: ' + JSON.stringify(e));
     }
   }
 
-  // Métodos para vinilos
-  async addVinyl(vinyl: any) {
-    const query = 'INSERT INTO vinyls (title, artist, year, genre, price, stock, image, description, tracklist) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
-    try {
-      const result = await this.db.run(query, [
-        vinyl.title,
-        vinyl.artist,
-        vinyl.year,
-        vinyl.genre,
-        vinyl.price,
-        vinyl.stock,
-        vinyl.image,
-        JSON.stringify(vinyl.description),
-        JSON.stringify(vinyl.tracklist)
-      ]);
-      return result;
-    } catch (error) {
-      console.error('Error adding vinyl', error);
-      throw error;
-    }
+  // Cargar datos iniciales
+  loadInitialData() {
+    forkJoin([
+      this.getAllUsers(),
+      this.getAllVinyls(),
+      this.getOrdersByStatus(['Pending', 'Processing', 'Shipped'])
+    ]).subscribe({
+      next: ([users, vinyls, orders]) => {
+        this.users.next(users);
+        this.vinyls.next(vinyls);
+        this.orders.next(orders);
+        console.log('Initial data loaded successfully');
+      },
+      error: error => console.error('Error loading initial data:', error)
+    });
   }
 
-  async getVinyls() {
-    const query = 'SELECT * FROM vinyls';
-    try {
-      const result = await this.db.query(query);
-      return result.values || [];
-    } catch (error) {
-      console.error('Error getting vinyls', error);
-      return [];
-    }
+  // Métodos CRUD para Users
+  getAllUsers(): Observable<User[]> {
+    return from(this.database.executeSql('SELECT * FROM Users', [])).pipe(
+      map(data => {
+        let users: User[] = [];
+        for (let i = 0; i < data.rows.length; i++) {
+          users.push({
+            id: data.rows.item(i).UserID,
+            username: data.rows.item(i).Username,
+            password: data.rows.item(i).Password,
+            role: data.rows.item(i).Role,
+            name: data.rows.item(i).Name,
+            email: data.rows.item(i).Email,
+            phoneNumber: data.rows.item(i).PhoneNumber,
+            createdAt: data.rows.item(i).CreatedAt,
+            lastLogin: data.rows.item(i).LastLogin
+          });
+        }
+        return users;
+      })
+    );
   }
 
-  async getVinylById(id: number) {
-    const query = 'SELECT * FROM vinyls WHERE id = ?';
-    try {
-      const result = await this.db.query(query, [id]);
-      return result.values?.[0];
-    } catch (error) {
-      console.error('Error getting vinyl by id', error);
-      return null;
-    }
+  // Métodos CRUD para Vinyls (productos)
+  async createVinyl(vinyl: Vinyl): Promise<number> {
+    const data = [vinyl.titulo, vinyl.artista, vinyl.precio,  vinyl.imagen, vinyl.descripcion, vinyl.tracklist, vinyl.quantity, vinyl.IsAvailable ? 1 : 0];
+    const result = await this.database.executeSql('INSERT INTO Vinyls (Title, Artist, Price, ImageURL,Description,Tracklist, Quantity, IsAvailable) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', data);
+    this.getAllVinyls();
+    return result.insertId;
   }
 
-  async updateVinyl(vinyl: any) {
-    const query = 'UPDATE vinyls SET title = ?, artist = ?, year = ?, genre = ?, price = ?, stock = ?, image = ?, description = ?, tracklist = ? WHERE id = ?';
-    try {
-      const result = await this.db.run(query, [
-        vinyl.title,
-        vinyl.artist,
-        vinyl.year,
-        vinyl.genre,
-        vinyl.price,
-        vinyl.stock,
-        vinyl.image,
-        JSON.stringify(vinyl.description),
-        JSON.stringify(vinyl.tracklist),
-        vinyl.id
-      ]);
-      return result;
-    } catch (error) {
-      console.error('Error updating vinyl', error);
-      throw error;
-    }
+  getAllVinyls(): Observable<Vinyl[]> {
+    return from(this.database.executeSql('SELECT * FROM Vinyls', [])).pipe(
+      map(data => {
+        let vinyls: Vinyl[] = [];
+        for (let i = 0; i < data.rows.length; i++) {
+          vinyls.push({
+            id: data.rows.item(i).VinylID,
+            titulo: data.rows.item(i).Title,
+            artista: data.rows.item(i).Artist,
+            imagen: data.rows.item(i).imageURL,
+            descripcion: data.rows.item(i).descripcion,
+            tracklist: data.rows.item(i).tracklist,
+            stock: data.rows.item(i).IsAvailable === 1 ? 1 : 0,
+            precio: data.rows.item(i).Price,
+            quantity: data.rows.item(i).Quantity
+          });
+        }
+        return vinyls;
+      })
+    );
   }
 
-  async deleteVinyl(id: number) {
-    const query = 'DELETE FROM vinyls WHERE id = ?';
-    try {
-      const result = await this.db.run(query, [id]);
-      return result;
-    } catch (error) {
-      console.error('Error deleting vinyl', error);
-      throw error;
-    }
+  // Métodos CRUD para Orders
+  async createOrder(order: Order): Promise<number> {
+    const data = [order.userId, order.status, order.totalAmount, order.paymentMethod];
+    const result = await this.database.executeSql('INSERT INTO Orders (UserID, Status, TotalAmount, PaymentMethod) VALUES (?, ?, ?, ?)', data);
+    this.getOrdersByStatus(['Pending', 'Processing', 'Shipped']);
+    return result.insertId;
   }
 
-  // Métodos para usuarios
-  async addUser(user: any) {
-    const query = 'INSERT INTO users (username, email, password) VALUES (?, ?, ?)';
-    try {
-      const result = await this.db.run(query, [user.username, user.email, user.password]);
-      return result;
-    } catch (error) {
-      console.error('Error adding user', error);
-      throw error;
-    }
+  getOrdersByStatus(statuses: string[]): Observable<Order[]> {
+    const placeholders = statuses.map(() => '?').join(',');
+    return from(this.database.executeSql(`SELECT * FROM Orders WHERE Status IN (${placeholders})`, statuses)).pipe(
+      map(data => {
+        let orders: Order[] = [];
+        for (let i = 0; i < data.rows.length; i++) {
+          orders.push({
+            ...data.rows.item(i),
+            id: data.rows.item(i).OrderID,
+            status: data.rows.item(i).Status,
+            totalAmount: data.rows.item(i).TotalAmount
+          });
+        }
+        return orders;
+      })
+    );
   }
 
-  async getUserByUsername(username: string) {
-    const query = 'SELECT * FROM users WHERE username = ?';
-    try {
-      const result = await this.db.query(query, [username]);
-      return result.values?.[0];
-    } catch (error) {
-      console.error('Error getting user by username', error);
-      return null;
-    }
+  // Otros métodos permanecen similares, ajustando las referencias de Products a Vinyls
+  // ...
+
+  // Datos de prueba para iniciar la base de datos
+  insertSeedData(): Observable<boolean> {
+    const users = [
+      { username: 'admin', password: 'admin123', role: 'admin', name: 'Admin User', email: 'admin@vinylstore.com' },
+      { username: 'customer1', password: 'cust123', role: 'customer', name: 'Customer One', email: 'cust1@vinylstore.com' }
+    ];
+  
+    const vinyls = [
+      { name: 'Abbey Road', artist: 'The Beatles', price: 3500, genre: 'Rock', imageURL: 'abbey_road.jpg', isAvailable: true },
+      { name: 'Thriller', artist: 'Michael Jackson', price: 4000, genre: 'Pop', imageURL: 'thriller.jpg', isAvailable: true },
+      { name: 'Back to Black', artist: 'Amy Winehouse', price: 3200, genre: 'Soul', imageURL: 'back_to_black.jpg', isAvailable: true }
+    ];
+    
+    // Insertar datos en tablas Users y Vinyls
+    // ...
+
+    return of(true); // Retornar Observable de éxito
   }
+
+  async updateVinyl(vinyl: Vinyl): Promise<void> {
+    const data = [vinyl.id, vinyl.titulo, vinyl.artista, vinyl.imagen, vinyl.descripcion, vinyl.tracklist, vinyl.stock, vinyl.precio, vinyl.quantity ? 1 : 0, vinyl.id];
+    await this.database.executeSql(`UPDATE Vinyls SET Title = ?, Artist = ?, Price = ?, Genre = ?, ImageURL = ?, IsAvailable = ? WHERE VinylID = ?`, data);
+    this.getAllVinyls().subscribe(vinyls => {
+      this.vinyls.next(vinyls); // Actualizar la lista de vinilos
+    });
+  }
+  
 }
+

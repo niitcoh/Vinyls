@@ -1,0 +1,113 @@
+
+$primary-color: #8B4513; // Saddle Brown
+$secondary-color: #DEB887; // Burlywood
+$accent-color: #CD853F; // Peru
+$background-color: #FFF8DC; // Cornsilk
+$card-background: #FAEBD7; // Antique White
+$text-color: #3E2723; // Dark Brown
+$light-text-color: #FFF8DC; // Cornsilk
+
+@mixin vintage-border {
+  border: 2px solid $primary-color;
+  box-shadow: 3px 3px 0 rgba($primary-color, 0.5);
+}
+
+
+ion-content {
+  --background: #{$background-color};
+  font-family: 'Georgia', serif;
+  padding: 16px;
+}
+
+ion-header {
+  ion-toolbar {
+    --background: #{$primary-color};
+  }
+
+  ion-title {
+    text-align: center;
+    font-size: 24px;
+    font-family: 'Playfair Display', serif;
+    color: $light-text-color;
+  }
+}
+
+
+ion-list {
+  background-color: transparent;
+  margin-bottom: 24px;
+
+  ion-item {
+    --background: #{$card-background};
+    --border-color: #{$primary-color};
+    margin-bottom: 8px;
+    @include vintage-border;
+
+    ion-label {
+      color: $text-color;
+      font-family: 'Playfair Display', serif;
+    }
+
+    ion-button {
+      --color: #{$primary-color};
+      font-weight: bold;
+      
+      &[color="danger"] {
+        --color: #B22222; 
+      }
+
+      &::part(native) {
+        padding: 0 10px;
+        height: 30px;
+      }
+    }
+  }
+}
+
+
+ion-item {
+  --background: #{$card-background};
+  --border-color: #{$primary-color};
+  margin-bottom: 16px;
+  @include vintage-border;
+
+  ion-label {
+    color: $accent-color;
+    font-family: 'Playfair Display', serif;
+  }
+
+  ion-input, ion-select {
+    --color: #{$text-color};
+    --placeholder-color: #{$secondary-color};
+    font-family: 'Georgia', serif;
+  }
+}
+
+ion-select::part(icon) {
+  color: $accent-color;
+}
+
+
+ion-button {
+  --background: #{$accent-color};
+  --color: #{$light-text-color};
+  margin-top: 16px;
+  @include vintage-border;
+  font-family: 'Georgia', serif;
+
+  &[color="light"] {
+    --background: #{$card-background};
+    --color: #{$text-color};
+  }
+}
+
+
+ion-select {
+  --placeholder-color: #{$text-color};
+  --placeholder-opacity: 1;
+}
+
+ion-select-option {
+  color: $text-color;
+  background-color: $card-background;
+}

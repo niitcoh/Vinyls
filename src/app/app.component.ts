@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { NavController, MenuController } from '@ionic/angular';
+import { AuthService } from './services/auth.service'; // Importar el AuthService
 
 @Component({
   selector: 'app-root',
@@ -11,34 +12,31 @@ export class AppComponent {
   static userRole: string = '';
   static userName: string = '';
 
-  // Getter methods for easier access in templates
   get isLoggedIn(): boolean {
-    return AppComponent.isLoggedIn;
+    return this.authService.isLoggedIn;
   }
 
   get isAdmin(): boolean {
-    return AppComponent.userRole === 'admin';
+    return this.authService.userRole === 'admin';
+  }
+
+  get isUser(): boolean {
+    return this.authService.userRole === 'user';
   }
 
   get userName(): string {
-    return AppComponent.userName;
+    return this.authService.userEmail;
   }
 
   constructor(
     private navCtrl: NavController,
-    private menuCtrl: MenuController
+    private menuCtrl: MenuController,
+    private authService: AuthService  
   ) {}
 
-  static login(role: string, name: string) {
-    AppComponent.isLoggedIn = true;
-    AppComponent.userRole = role;
-    AppComponent.userName = name;
-  }
-
+  // Metodo para cerrar sesión
   logout() {
-    AppComponent.isLoggedIn = false;
-    AppComponent.userRole = '';
-    AppComponent.userName = '';
+    this.authService.logout();
     this.navCtrl.navigateRoot('/home');
     this.menuCtrl.close();
   }

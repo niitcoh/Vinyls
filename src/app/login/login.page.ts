@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { NavController, ToastController } from '@ionic/angular';
-import { AppComponent } from '../app.component';
+import { AuthService } from '../services/auth.service'; 
 
 @Component({
   selector: 'app-login',
@@ -18,14 +18,16 @@ export class LoginPage {
 
   constructor(
     private navCtrl: NavController,
-    private toastController: ToastController
+    private toastController: ToastController,
+    private authService: AuthService  
   ) {}
 
   async login() {
     const user = this.users.find(user => user.email === this.email && user.password === this.password);
 
     if (user) {
-      AppComponent.login(user.role, user.email);
+      this.authService.login(user.email, user.role);  
+      
       await this.presentToast('Inicio de sesión exitoso', 'success');
       this.navCtrl.navigateForward('/home');
     } else {

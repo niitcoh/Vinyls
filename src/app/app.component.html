@@ -29,14 +29,17 @@
           <ion-icon name="cart-outline" slot="start"></ion-icon>
           <ion-label>Carrito</ion-label>
         </ion-item>        
+        <!-- Opción para admin -->
         <ion-item *ngIf="isAdmin" routerLink="/vinilo-crud" routerDirection="root" (click)="closeMenu()">
           <ion-icon name="create-outline" slot="start"></ion-icon>
           <ion-label>Gestionar Vinilos</ion-label>
         </ion-item>
-        <ion-item *ngIf="isAdmin" routerLink="/profile-edit" (click)="closeMenu()">
+        <!-- Opción para user y admin -->
+        <ion-item *ngIf="isLoggedIn && (isAdmin || isUser)" routerLink="/profile-edit" (click)="closeMenu()">
           <ion-icon name="person-outline" slot="start"></ion-icon>
           <ion-label>Editar Perfil</ion-label>
         </ion-item>
+        <!-- Opción para no autenticados -->
         <ion-item *ngIf="!isLoggedIn" routerLink="/login" routerDirection="root" (click)="closeMenu()">
           <ion-icon name="log-in-outline" slot="start"></ion-icon>
           <ion-label>Ingresar</ion-label>

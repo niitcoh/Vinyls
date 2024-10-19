@@ -4,10 +4,13 @@ import { AlertController, Platform } from '@ionic/angular';
 import { BehaviorSubject, Observable, from } from 'rxjs';
 import { map, catchError, switchMap } from 'rxjs/operators';
 import { User } from '../models/user.model';
-import { Vinyl } from '../models/vinilos.model';  // Usar el modelo Vinyl
-import { Order } from '../models/order.model';     // Aquí representan las órdenes de compra
-//import { OrderDetail } from '../models/order-detail.model';
 import { of, firstValueFrom, forkJoin } from 'rxjs';
+import { Order } from '../models/order.model';
+import { OrderDetail } from '../models/order-detail.model';
+import { Vinyl } from '../models/vinilos.model';
+import { Plugins } from '@capacitor/core';
+const { Console } = Plugins;
+
 
 @Injectable({
   providedIn: 'root'
@@ -28,14 +31,13 @@ export class DatabaseService {
 
   async initializeDatabase() {
     try {
-      // Crear una nueva base de datos para la tienda de vinilos
       this.database = await this.sqlite.create({
-        name: 'vinylstore.db',  // Nombre actualizado de la base de datos
+        name: 'cafeteria.db',
         location: 'default'
       });
-  
-      await this.createTables();
-      await firstValueFrom(this.insertSeedData());
+
+      await this.createTablesIfNotExist();
+      await this.insertSeedDataIfEmpty();
       this.dbReady.next(true);
     } catch (error) {
       console.error('Error initializing database', error);
@@ -43,30 +45,48 @@ export class DatabaseService {
     }
   }
 
-  // Definición de tablas
-  tableUsers: string = `
-    CREATE TABLE IF NOT EXISTS Users (
-      UserID INTEGER PRIMARY KEY AUTOINCREMENT,
-      Username TEXT NOT NULL UNIQUE,
-      Password TEXT NOT NULL,
-      Role TEXT NOT NULL CHECK (Role IN ('customer', 'admin', 'manager')),
-      Name TEXT NOT NULL,
-      Email TEXT UNIQUE,
-      PhoneNumber TEXT,
-      CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-      LastLogin DATETIME
-    );`;
+  async createTablesIfNotExist() {
+    const tables = [this.tableUsers, this.tableProducts, this.tableOrders, this.tableOrderDetails, this.tableSalesReports];
+    for (const table of tables) {
+      await this.database.executeSql(table, []);
+    }
+  }
 
-  tableVinyls: string = `
-    CREATE TABLE IF NOT EXISTS Vinyls (
-      VinylID INTEGER PRIMARY KEY AUTOINCREMENT,
-      Title TEXT NOT NULL,
-      Artist TEXT NOT NULL,
-      Price REAL NOT NULL,
-      ImageURL TEXT,
+  async getUserCount(): Promise<number> {
+    const result = await this.database.executeSql('SELECT COUNT(*) as count FROM Users', []);
+    return result.rows.item(0).count;
+  }
+
+  async insertSeedDataIfEmpty() {
+    const userCount = await this.getUserCount();
+    if (userCount === 0) {
+      await firstValueFrom(this.insertSeedData());
+    }
+  }
+
+  // Tablas
+  tableUsers: string = `
+  CREATE TABLE IF NOT EXISTS Users (
+    UserID INTEGER PRIMARY KEY AUTOINCREMENT,
+    Username TEXT NOT NULL UNIQUE,
+    Password TEXT NOT NULL,
+    Role TEXT NOT NULL CHECK (Role IN ('employee', 'admin', 'manager')),
+    Name TEXT NOT NULL,
+    Email TEXT UNIQUE,
+    PhoneNumber TEXT,
+    HireDate DATE,
+    LastLogin DATETIME,
+    ApprovalStatus TEXT NOT NULL CHECK (ApprovalStatus IN ('pending', 'approved', 'rejected'))
+  );`;
+
+  tableProducts: string = `
+    CREATE TABLE IF NOT EXISTS Products (
+      ProductID INTEGER PRIMARY KEY AUTOINCREMENT,
+      Name TEXT NOT NULL,
       Description TEXT,
-      Tracklist TEXT,
-      Quantity INTEGER DEFAULT 0,
+      Price REAL NOT NULL,
+      Category TEXT NOT NULL,
+      ImageURL TEXT,
       IsAvailable BOOLEAN DEFAULT 1,
       CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -76,9 +96,11 @@ export class DatabaseService {
     CREATE TABLE IF NOT EXISTS Orders (
       OrderID INTEGER PRIMARY KEY AUTOINCREMENT,
       UserID INTEGER,
-      Status TEXT NOT NULL CHECK (Status IN ('Pending', 'Processing', 'Shipped', 'Delivered', 'Canceled')),
+      TableNumber INTEGER,
+      Status TEXT NOT NULL CHECK (Status IN ('Solicitado', 'En proceso', 'Listo', 'Cancelado', 'Entregado')),
       CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       UpdatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      Notes TEXT,
       TotalAmount REAL NOT NULL,
       PaymentMethod TEXT,
       FOREIGN KEY (UserID) REFERENCES Users(UserID)
@@ -88,22 +110,40 @@ export class DatabaseService {
     CREATE TABLE IF NOT EXISTS OrderDetails (
       OrderDetailID INTEGER PRIMARY KEY AUTOINCREMENT,
       OrderID INTEGER,
-      VinylID INTEGER,
+      ProductID INTEGER,
       Quantity INTEGER NOT NULL,
+      Size TEXT,
+      MilkType TEXT,
       Price REAL NOT NULL,
       FOREIGN KEY (OrderID) REFERENCES Orders(OrderID),
-      FOREIGN KEY (VinylID) REFERENCES Vinyls(VinylID)
+      FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
+    );`;
+
+  tableSalesReports: string = `
+    CREATE TABLE IF NOT EXISTS SalesReports (
+    ReportID INTEGER PRIMARY KEY AUTOINCREMENT,
+    StartDate DATE NOT NULL,
+    EndDate DATE NOT NULL,
+    TotalSales REAL NOT NULL,
+    TotalOrders INTEGER NOT NULL,
+    CanceledOrders INTEGER NOT NULL,
+    CanceledSales REAL NOT NULL,
+    TopSellingProducts TEXT NOT NULL,
+    DailySales TEXT NOT NULL,
+    GeneratedBy INTEGER,
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (GeneratedBy) REFERENCES Users(UserID)
     );`;
 
   // BehaviorSubjects para los listados
   private users = new BehaviorSubject<User[]>([]);
-  private vinyls = new BehaviorSubject<Vinyl[]>([]); // Renombrado a Vinyls
+  private products = new BehaviorSubject<Product[]>([]);
   private orders = new BehaviorSubject<Order[]>([]);
 
   // Observable para el estado de la base de datos
   private isDBReady: BehaviorSubject<boolean> = new BehaviorSubject(false);
   
-  // Alertas
+
   async presentAlert(titulo: string, msj: string) {
     const alert = await this.alertController.create({
       header: titulo,
@@ -122,8 +162,8 @@ export class DatabaseService {
     return this.users.asObservable();
   }
 
-  fetchVinyls(): Observable<Vinyl[]> {
-    return this.vinyls.asObservable();
+  fetchProducts(): Observable<Product[]> {
+    return this.products.asObservable();
   }
 
   fetchOrders(): Observable<Order[]> {
@@ -132,41 +172,23 @@ export class DatabaseService {
 
   async createTables() {
     try {
-      console.log('Iniciando creación de tablas...');
-      
       await this.database.executeSql('DROP TABLE IF EXISTS Users', []);
-      console.log('Tabla Users eliminada si existía.');
-      
-      await this.database.executeSql('DROP TABLE IF EXISTS Vinyls', []);
-      console.log('Tabla Vinyls eliminada si existía.');
-      
+      await this.database.executeSql('DROP TABLE IF EXISTS Products', []);
       await this.database.executeSql('DROP TABLE IF EXISTS Orders', []);
-      console.log('Tabla Orders eliminada si existía.');
-      
       await this.database.executeSql('DROP TABLE IF EXISTS OrderDetails', []);
-      console.log('Tabla OrderDetails eliminada si existía.');
-      
-      // Crear tablas en orden correcto
+      await this.database.executeSql('DROP TABLE IF EXISTS SalesReports', []);
+  
       await this.database.executeSql(this.tableUsers, []);
-      console.log('Tabla Users creada.');
-      
-      await this.database.executeSql(this.tableVinyls, []);
-      console.log('Tabla Vinyls creada.');
-      
+      await this.database.executeSql(this.tableProducts, []);
       await this.database.executeSql(this.tableOrders, []);
-      console.log('Tabla Orders creada.');
-      
       await this.database.executeSql(this.tableOrderDetails, []);
-      console.log('Tabla OrderDetails creada.');
-      
+      await this.database.executeSql(this.tableSalesReports, []);
+  
       await this.insertSeedData().toPromise();
-      console.log('Datos iniciales insertados.');
-      
+  
       this.loadInitialData();
       this.isDBReady.next(true);
-      console.log('Base de datos lista.');
     } catch (e) {
-      console.error('Error al crear las tablas:', e);
       this.presentAlert('Creación de Tablas', 'Error al crear las tablas: ' + JSON.stringify(e));
     }
   }
@@ -175,12 +197,12 @@ export class DatabaseService {
   loadInitialData() {
     forkJoin([
       this.getAllUsers(),
-      this.getAllVinyls(),
-      this.getOrdersByStatus(['Pending', 'Processing', 'Shipped'])
+      this.getAllProducts(),
+      this.getOrdersByStatus(['Solicitado', 'En proceso', 'Listo'])
     ]).subscribe({
-      next: ([users, vinyls, orders]) => {
+      next: ([users, products, orders]) => {
         this.users.next(users);
-        this.vinyls.next(vinyls);
+        this.products.next(products);
         this.orders.next(orders);
         console.log('Initial data loaded successfully');
       },
@@ -189,63 +211,110 @@ export class DatabaseService {
   }
 
   // Métodos CRUD para Users
+  async createUser(user: User): Promise<number | null> {
+    console.log('Iniciando creación de usuario en la base de datos');
+    try {
+      const result = await this.database.executeSql(
+        'INSERT INTO Users (Username, Password, Role, Name, Email, ApprovalStatus) VALUES (?, ?, ?, ?, ?, ?)',
+        [user.Username, user.Password, user.Role, user.Name, user.Email, user.ApprovalStatus]
+      );
+      console.log('Usuario insertado con éxito, ID:', result.insertId);
+      return result.insertId;
+    } catch (error: unknown) {
+      console.error('Error al crear usuario:', error);
+      if (error instanceof Error && error.message.includes('UNIQUE constraint failed: Users.Email')) {
+        console.log('Error de email duplicado');
+        return null;
+      }
+      throw error;
+    }
+  }
   getAllUsers(): Observable<User[]> {
     return from(this.database.executeSql('SELECT * FROM Users', [])).pipe(
       map(data => {
         let users: User[] = [];
         for (let i = 0; i < data.rows.length; i++) {
-          users.push({
-            id: data.rows.item(i).UserID,
-            username: data.rows.item(i).Username,
-            password: data.rows.item(i).Password,
-            role: data.rows.item(i).Role,
-            name: data.rows.item(i).Name,
-            email: data.rows.item(i).Email,
-            phoneNumber: data.rows.item(i).PhoneNumber,
-            createdAt: data.rows.item(i).CreatedAt,
-            lastLogin: data.rows.item(i).LastLogin
-          });
+          users.push(data.rows.item(i));
         }
         return users;
       })
     );
   }
 
-  // Métodos CRUD para Vinyls (productos)
-  async createVinyl(vinyl: Vinyl): Promise<number> {
-    const data = [vinyl.titulo, vinyl.artista, vinyl.precio,  vinyl.imagen, vinyl.descripcion, vinyl.tracklist, vinyl.quantity, vinyl.IsAvailable ? 1 : 0];
-    const result = await this.database.executeSql('INSERT INTO Vinyls (Title, Artist, Price, ImageURL,Description,Tracklist, Quantity, IsAvailable) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', data);
-    this.getAllVinyls();
-    return result.insertId;
-  }
-
-  getAllVinyls(): Observable<Vinyl[]> {
-    return from(this.database.executeSql('SELECT * FROM Vinyls', [])).pipe(
+  getPendingUsers(): Observable<User[]> {
+    return from(this.database.executeSql('SELECT * FROM Users WHERE ApprovalStatus = ?', ['pending'])).pipe(
       map(data => {
-        let vinyls: Vinyl[] = [];
+        let users: User[] = [];
         for (let i = 0; i < data.rows.length; i++) {
-          vinyls.push({
-            id: data.rows.item(i).VinylID,
-            titulo: data.rows.item(i).Title,
-            artista: data.rows.item(i).Artist,
-            imagen: data.rows.item(i).imageURL,
-            descripcion: data.rows.item(i).descripcion,
-            tracklist: data.rows.item(i).tracklist,
-            stock: data.rows.item(i).IsAvailable === 1 ? 1 : 0,
-            precio: data.rows.item(i).Price,
-            quantity: data.rows.item(i).Quantity
-          });
+          users.push(data.rows.item(i));
         }
-        return vinyls;
+        return users;
       })
     );
   }
 
-  // Métodos CRUD para Orders
+  updateUserApprovalStatus(userId: number, status: 'approved' | 'rejected' | 'pending'): Observable<boolean> {
+    console.log(`Actualizando estado de aprobación para usuario ${userId} a ${status}`);
+    return from(this.database.executeSql(
+      'UPDATE Users SET ApprovalStatus = ? WHERE UserID = ?',
+      [status, userId]
+    )).pipe(
+      map(result => {
+        console.log('Resultado de la actualización:', result);
+        return result.rowsAffected > 0;
+      }),
+      catchError(error => {
+        console.error('Error al actualizar el estado de aprobación:', error);
+        return of(false);
+      })
+    );
+  }
+  // Métodos CRUD para Products
+  async createProduct(product: Product): Promise<number> {
+    const data = [product.name, product.description, product.price, product.category, product.imageURL, product.isAvailable ? 1 : 0];
+    const result = await this.database.executeSql('INSERT INTO Products (Name, Description, Price, Category, ImageURL, IsAvailable) VALUES (?, ?, ?, ?, ?, ?)', data);
+    this.getAllProducts();
+    return result.insertId;
+  }
+
+  getAllProducts(): Observable<Product[]> {
+    console.log('Obteniendo todos los productos...');
+    return from(this.database.executeSql('SELECT * FROM Products', [])).pipe(
+      map(data => {
+        console.log('Resultado de la consulta de productos:', JSON.stringify(data));
+        let products: Product[] = [];
+        
+        for (let i = 0; i < data.rows.length; i++) {
+          let item = data.rows.item(i);
+          console.log('Producto individual:', JSON.stringify(item));
+          
+          const product: Product = {
+            id: item.ProductID,
+            name: item.Name,
+            description: item.Description,
+            price: item.Price,
+            category: item.Category,
+            imageURL: item.ImageURL,
+            isAvailable: item.IsAvailable === 1
+          };
+          products.push(product);
+        }
+        
+        console.log('Productos procesados:', JSON.stringify(products));
+        return products;
+      }),
+      catchError(error => {
+        console.error('Error al obtener productos:', error);
+        return of([]);
+      })
+    );
+  }
+
+  // Métodos para Orders
   async createOrder(order: Order): Promise<number> {
-    const data = [order.userId, order.status, order.totalAmount, order.paymentMethod];
-    const result = await this.database.executeSql('INSERT INTO Orders (UserID, Status, TotalAmount, PaymentMethod) VALUES (?, ?, ?, ?)', data);
-    this.getOrdersByStatus(['Pending', 'Processing', 'Shipped']);
+    const data = [order.userId, order.tableNumber, order.status, order.notes, order.totalAmount, order.paymentMethod];
+    const result = await this.database.executeSql('INSERT INTO Orders (UserID, TableNumber, Status, Notes, TotalAmount, PaymentMethod) VALUES (?, ?, ?, ?, ?, ?)', data);
+    this.getOrdersByStatus(['Solicitado', 'En proceso', 'Listo']);
     return result.insertId;
   }
 
@@ -259,43 +328,372 @@ export class DatabaseService {
             ...data.rows.item(i),
             id: data.rows.item(i).OrderID,
             status: data.rows.item(i).Status,
-            totalAmount: data.rows.item(i).TotalAmount
+            tableNumber: data.rows.item(i).TableNumber
           });
         }
         return orders;
       })
     );
   }
-
-  // Otros métodos permanecen similares, ajustando las referencias de Products a Vinyls
-  // ...
-
-  // Datos de prueba para iniciar la base de datos
-  insertSeedData(): Observable<boolean> {
-    const users = [
-      { username: 'admin', password: 'admin123', role: 'admin', name: 'Admin User', email: 'admin@vinylstore.com' },
-      { username: 'customer1', password: 'cust123', role: 'customer', name: 'Customer One', email: 'cust1@vinylstore.com' }
-    ];
   
-    const vinyls = [
-      { name: 'Abbey Road', artist: 'The Beatles', price: 3500, genre: 'Rock', imageURL: 'abbey_road.jpg', isAvailable: true },
-      { name: 'Thriller', artist: 'Michael Jackson', price: 4000, genre: 'Pop', imageURL: 'thriller.jpg', isAvailable: true },
-      { name: 'Back to Black', artist: 'Amy Winehouse', price: 3200, genre: 'Soul', imageURL: 'back_to_black.jpg', isAvailable: true }
-    ];
-    
-    // Insertar datos en tablas Users y Vinyls
-    // ...
-
-    return of(true); // Retornar Observable de éxito
+  async getOrdersCount(statuses: string[]): Promise<number> {
+    const placeholders = statuses.map(() => '?').join(',');
+    const query = `SELECT COUNT(*) as count FROM Orders WHERE Status IN (${placeholders})`;
+    const result = await this.database.executeSql(query, statuses);
+    return result.rows.item(0).count;
+  }
+  // Método de autenticación
+  async authenticateUser(email: string, password: string): Promise<User | null> {
+    console.log('Intentando autenticar usuario:', email);
+    try {
+      const query = 'SELECT * FROM Users WHERE Email = ?';
+      const result = await this.database.executeSql(query, [email]);
+      console.log('Resultado de la consulta:', JSON.stringify(result));
+  
+      if (result.rows.length > 0) {
+        const user = result.rows.item(0);
+        console.log('Usuario encontrado:', JSON.stringify(user));
+        if (user.Password === password) {
+          console.log('Contraseña correcta');
+          if (user.ApprovalStatus === 'approved') {
+            console.log('Usuario aprobado');
+            return user;
+          } else {
+            console.log('Usuario no aprobado. Estado:', user.ApprovalStatus);
+            return null;
+          }
+        } else {
+          console.log('Contraseña incorrecta');
+        }
+      } else {
+        console.log('No se encontró usuario con ese email');
+      }
+      return null;
+    } catch (error) {
+      console.error('Error durante la autenticación:', error);
+      throw error;
+    }
   }
 
-  async updateVinyl(vinyl: Vinyl): Promise<void> {
-    const data = [vinyl.id, vinyl.titulo, vinyl.artista, vinyl.imagen, vinyl.descripcion, vinyl.tracklist, vinyl.stock, vinyl.precio, vinyl.quantity ? 1 : 0, vinyl.id];
-    await this.database.executeSql(`UPDATE Vinyls SET Title = ?, Artist = ?, Price = ?, Genre = ?, ImageURL = ?, IsAvailable = ? WHERE VinylID = ?`, data);
-    this.getAllVinyls().subscribe(vinyls => {
-      this.vinyls.next(vinyls); // Actualizar la lista de vinilos
+
+  pdateProduct(product: Product): Promise<boolean> | Observable<any> {
+    const data = [product.name, product.description, product.price, product.category, product.imageURL, product.isAvailable ? 1 : 0, product.id];
+    return from(this.database.executeSql('UPDATE Products SET Name = ?, Description = ?, Price = ?, Category = ?, ImageURL = ?, IsAvailable = ? WHERE ProductID = ?', data))
+      .pipe(
+        map(() => {
+          this.getAllProducts();
+          return true;
+        })
+      );
+  }
+
+  // Método para calcular ventas totales
+  async calculateTotalSales(startDate: string, endDate: string, statuses: string[] = ['Solicitado', 'En proceso', 'Listo', 'Entregado']): Promise<number> {
+    const placeholders = statuses.map(() => '?').join(',');
+    const query = `
+      SELECT SUM(TotalAmount) as TotalSales 
+      FROM Orders 
+      WHERE DATE(CreatedAt) BETWEEN ? AND ? 
+      AND Status IN (${placeholders})
+    `;
+    const params = [startDate, endDate, ...statuses];
+    
+    try {
+      const data = await this.database.executeSql(query, params);
+      return data.rows.item(0).TotalSales || 0;
+    } catch (error) {
+      console.error('Error al calcular ventas totales:', error);
+      return 0;
+    }
+  }
+
+  // Método para obtener productos más vendidos
+  async getTopSellingProducts(limit: number = 5): Promise<{productId: number, name: string, totalSold: number}[]> {
+    const query = `
+      SELECT 
+        p.ProductID as productId, 
+        p.Name as name, 
+        SUM(od.Quantity) as totalSold
+      FROM OrderDetails od
+      JOIN Products p ON od.ProductID = p.ProductID
+      GROUP BY od.ProductID
+      ORDER BY totalSold DESC
+      LIMIT ?
+    `;
+    const data = await this.database.executeSql(query, [limit]);
+    let topProducts: {productId: number, name: string, totalSold: number}[] = [];
+    if (data.rows.length > 0) {
+      for (let i = 0; i < data.rows.length; i++) {
+        topProducts.push(data.rows.item(i));
+      }
+    }
+    return topProducts;
+  }
+
+  addProductToOrder(orderDetail: OrderDetail): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const sql = 'INSERT INTO OrderDetails (OrderID, ProductID, Quantity, Size, MilkType, Price) VALUES (?, ?, ?, ?, ?, ?)';
+      const values = [orderDetail.orderId, orderDetail.productId, orderDetail.quantity, orderDetail.size, orderDetail.milkType, orderDetail.price];
+      
+      this.database.executeSql(sql, values)
+        .then(data => {
+          resolve(data.insertId);
+        })
+        .catch(error => {
+          reject(error);
+        });
     });
+  }
+
+  getOrderDetails(orderId: number): Observable<OrderDetail[]> {
+    return from(this.database.executeSql(`
+      SELECT od.*, p.Name, p.ImageURL 
+      FROM OrderDetails od
+      LEFT JOIN Products p ON od.ProductID = p.ProductID
+      WHERE od.OrderID = ?
+    `, [orderId])).pipe(
+      map(data => {
+        let orderDetails: OrderDetail[] = [];
+        for (let i = 0; i < data.rows.length; i++) {
+          const item = data.rows.item(i);
+          orderDetails.push({
+            id: item.OrderDetailID,
+            orderId: item.OrderID,
+            productId: item.ProductID,
+            quantity: item.Quantity,
+            size: item.Size,
+            milkType: item.MilkType,
+            price: item.Price,
+            name: item.Name || 'Producto desconocido',
+            image: item.ImageURL || 'assets/default-product-image.jpg'
+          });
+        }
+        return orderDetails;
+      })
+    );
+  }
+
+  updateOrderStatus(orderId: number, status: string): Observable<boolean> {
+    return new Observable(observer => {
+      const sql = 'UPDATE Orders SET Status = ? WHERE OrderID = ?';
+      this.database.executeSql(sql, [status, orderId])
+        .then(() => {
+          observer.next(true);
+          observer.complete();
+        })
+        .catch(e => observer.error(e));
+    });
+  }
+
+  updateProduct(product: Product): Observable<boolean> {
+    return new Observable(observer => {
+      const sql = 'UPDATE Products SET Name = ?, Description = ?, Price = ?, Category = ?, ImageURL = ?, IsAvailable = ? WHERE ProductID = ?';
+      const data = [product.name, product.description, product.price, product.category, product.imageURL, product.isAvailable ? 1 : 0, product.id];
+      
+      this.database.executeSql(sql, data)
+        .then(() => {
+          observer.next(true);
+          observer.complete();
+        })
+        .catch(e => observer.error(e));
+    });
+  }
+
+  deleteProduct(id: number): Promise<boolean> | Observable<any> {
+    return from(this.database.executeSql('DELETE FROM Products WHERE ProductID = ?', [id]))
+      .pipe(
+        map(() => {
+          this.getAllProducts();
+          return true;
+        })
+      );
+  }
+  public updateUserFromDb(user: User): Promise<boolean> {
+    const sql = 'UPDATE Users SET Username = ?, Name = ?, Email = ? WHERE UserID = ?';
+    const data = [user.Username, user.Name, user.Email, user.UserID];
+  
+    const result = new Observable<boolean>(observer => {
+      this.database.executeSql(sql, data)
+        .then(() => {
+          observer.next(true);
+          observer.complete();
+        })
+        .catch(error => {
+          observer.error(error);
+        });
+    });
+  
+    return result.pipe(
+      map(() => true),
+      catchError(() => of(false))
+    )
+    .toPromise()
+    .then(res => res !== undefined ? res : false);
+  }
+  
+
+  deleteUser(id: number): Observable<boolean> {
+    return new Observable(observer => {
+      const sql = 'DELETE FROM Users WHERE UserID = ?';
+      this.database.executeSql(sql, [id])
+        .then(() => {
+          observer.next(true);
+          observer.complete();
+        })
+        .catch(e => observer.error(e));
+    });
+  }
+
+  updateUserLastLogin(userId: number): Observable<boolean> {
+    return new Observable(observer => {
+      const sql = 'UPDATE Users SET LastLogin = CURRENT_TIMESTAMP WHERE UserID = ?';
+      this.database.executeSql(sql, [userId])
+        .then(() => {
+          observer.next(true);
+          observer.complete();
+        })
+        .catch(e => observer.error(e));
+    });
+  }
+
+  getUserById(id: number): Observable<User> {
+    return new Observable(observer => {
+      const sql = 'SELECT * FROM Users WHERE UserID = ?';
+      this.database.executeSql(sql, [id])
+        .then(data => {
+          if (data.rows.length > 0) {
+            observer.next(data.rows.item(0));
+          } else {
+            observer.error('User not found');
+          }
+          observer.complete();
+        })
+        .catch(e => observer.error(e));
+    });
+  }
+
+  getUserByEmail(email: string): Observable<User | null> {
+    return from(this.database.executeSql('SELECT * FROM Users WHERE Email = ?', [email])).pipe(
+      map(data => {
+        if (data.rows.length > 0) {
+          return {
+            UserID: data.rows.item(0).UserID,
+            Username: data.rows.item(0).Username,
+            Password: data.rows.item(0).Password,
+            Role: data.rows.item(0).Role,
+            Name: data.rows.item(0).Name,
+            Email: data.rows.item(0).Email,
+            PhoneNumber: data.rows.item(0).PhoneNumber,
+            HireDate: data.rows.item(0).HireDate ? new Date(data.rows.item(0).HireDate) : undefined,
+            LastLogin: data.rows.item(0).LastLogin ? new Date(data.rows.item(0).LastLogin) : undefined,
+            ApprovalStatus: data.rows.item(0).ApprovalStatus
+          };
+        }
+        return null;
+      })
+    );
+  }
+  updateUserPassword(userId: number, currentPassword: string, newPassword: string): Observable<boolean> {
+    const sql = 'UPDATE Users SET Password = ? WHERE UserID = ? AND Password = ?';
+    const data = [newPassword, userId, currentPassword];
+  
+    return new Observable(observer => {
+      this.database.executeSql(sql, data)
+        .then(() => {
+          observer.next(true);  // Si la operación fue exitosa
+          observer.complete();
+        })
+        .catch(error => {
+          observer.error(error);  // Si hay un error, lo emitimos
+        });
+    });
+  }
+
+  // Método para insertar datos de prueba
+
+
+insertSeedData(): Observable<boolean> {
+    const users = [
+      { username: 'admin', password: 'admin123', role: 'admin', name: 'Admin User', email: 'admin@example.com', approvalStatus: 'approved' },
+      { username: 'employee1', password: 'emp123', role: 'employee', name: 'Employee One', email: 'emp1@example.com', approvalStatus: 'approved' }
+    ];
+  
+    const products = [
+      { name: 'Café Americano', description: 'Café negro tradicional', price: 2500, category: 'Bebidas calientes', imageURL: 'americano.jpg', isAvailable: true },
+      { name: 'Cappuccino', description: 'Espresso con leche espumosa', price: 3000, category: 'Bebidas calientes', imageURL: 'cappuccino.jpg', isAvailable: true },
+      { name: 'Latte', description: 'Café con leche cremosa', price: 3200, category: 'Bebidas calientes', imageURL: 'latte.jpg', isAvailable: true },
+    ];
+  
+    return forkJoin([
+      ...users.map(user => 
+        from(this.database.executeSql(
+          'INSERT OR IGNORE INTO Users (Username, Password, Role, Name, Email, ApprovalStatus) VALUES (?, ?, ?, ?, ?, ?)', 
+          [user.username, user.password, user.role, user.name, user.email, user.approvalStatus]
+        ))
+      ),
+      ...products.map(product => 
+        from(this.database.executeSql(
+          'INSERT OR IGNORE INTO Products (Name, Description, Price, Category, ImageURL, IsAvailable) VALUES (?, ?, ?, ?, ?, ?)', 
+          [product.name, product.description, product.price, product.category, product.imageURL, product.isAvailable ? 1 : 0]
+        ))
+      )
+    ]).pipe(
+      map(() => true),
+      catchError(error => {
+        console.error('Error in insertSeedData:', error);
+        return of(false);
+      })
+    );
+  }
+
+  getOrderCountForToday(): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const today = new Date().toISOString().split('T')[0];
+      const query = `SELECT COUNT(*) as count FROM Orders WHERE DATE(CreatedAt) = ?`;
+      this.database.executeSql(query, [today]).then(data => {
+        resolve(data.rows.item(0).count);
+      }, err => {
+        reject(err);
+      });
+    });
+  }
+
+  getActiveEmployeesCount(): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const query = `SELECT COUNT(*) as count FROM Users WHERE Role = 'employee' AND LastLogin IS NOT NULL`;
+      this.database.executeSql(query, []).then(data => {
+        resolve(data.rows.item(0).count);
+      }, err => {
+        reject(err);
+      });
+    });
+  }
+
+
+  async getProductDetails(productName: string): Promise<any> {
+    const query = `
+      SELECT 
+        p.Name as name,
+        SUM(od.Quantity) as totalSold,
+        SUM(od.Quantity * od.Price) as totalRevenue,
+        p.Stock as currentStock
+      FROM Products p
+      LEFT JOIN OrderDetails od ON p.ProductID = od.ProductID
+      WHERE p.Name = ?
+      GROUP BY p.ProductID
+    `;
+    
+    try {
+      const result = await this.database.executeSql(query, [productName]);
+      if (result.rows.length > 0) {
+        return result.rows.item(0);
+      } else {
+        throw new Error('Producto no encontrado');
+      }
+    } catch (error) {
+      console.error('Error al obtener detalles del producto:', error);
+      throw error;
+    }
   }
   
 }
-

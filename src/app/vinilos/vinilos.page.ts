@@ -3,17 +3,7 @@ import { CartService } from '../services/cart.service';
 import { NavController, ToastController } from '@ionic/angular';
 import { AppComponent } from '../app.component';
 import { DatabaseService } from '../services/database.service';
-
-interface Vinilo {
-  id: number;
-  titulo: string;
-  artista: string;
-  imagen: string;
-  descripcion: string[];
-  tracklist: string[];
-  stock: number;
-  precio: number;
-}
+import { Vinyl } from '../models/vinilos.model';
 
 @Component({
   selector: 'app-vinilos',
@@ -21,9 +11,9 @@ interface Vinilo {
   styleUrls: ['./vinilos.page.scss'],
 })
 export class VinilosPage implements OnInit {
-  vinilos: Vinilo[] = [];
-  vinilosFiltrados: Vinilo[] = [];
-  viniloSeleccionado: Vinilo | null = null;
+  vinilos: Vinyl[] = [];
+  vinilosFiltrados: Vinyl[] = [];
+  viniloSeleccionado: Vinyl | null = null;
   mostrarDescripcionDetalle: 'descripcion' | 'tracklist' = 'descripcion';
 
   constructor(
@@ -39,14 +29,10 @@ export class VinilosPage implements OnInit {
 
   async cargarVinilos() {
     try {
-      this.databaseService.getAllVinyls().subscribe(vinilosFromDB => {
-        this.vinilos = vinilosFromDB.map(vinilo => ({
-          ...vinilo,
-          descripcion: vinilo.descripcion || [],
-          tracklist: Array.isArray(vinilo.tracklist) ? vinilo.tracklist : (vinilo.tracklist ? JSON.parse(vinilo.tracklist) : [])
-        }));
+      this.databaseService.getVinyls().subscribe((vinilosFromDB: Vinyl[]) => {
+        this.vinilos = vinilosFromDB;
         this.vinilosFiltrados = this.vinilos;
-      }, error => {
+      }, (error: any) => {
         console.error('Error al cargar vinilos:', error);
         this.presentToast('Error al cargar vinilos. Por favor, intente más tarde.');
       });
@@ -69,7 +55,7 @@ export class VinilosPage implements OnInit {
     }
   }
 
-  mostrarDescripcion(vinilo: Vinilo) {
+  mostrarDescripcion(vinilo: Vinyl) {
     this.viniloSeleccionado = vinilo;
     this.mostrarDescripcionDetalle = 'descripcion';
   }
@@ -79,15 +65,18 @@ export class VinilosPage implements OnInit {
   }
 
   async agregarAlCarrito() {
-    if (this.viniloSeleccionado) {
+    if (this.viniloSeleccionado && this.viniloSeleccionado.id !== undefined) {
       if (AppComponent.isLoggedIn) {
         try {
-          await this.databaseService.updateVinyl({
-            ...this.viniloSeleccionado,
-            stock: this.viniloSeleccionado.stock - 1
-          });
+          await this.databaseService.updateVinylStock(this.viniloSeleccionado.id, this.viniloSeleccionado.stock - 1).toPromise();
           
-          this.cartService.addToCart(this.viniloSeleccionado);
+          // Creamos una copia del vinilo seleccionado con id como número
+          const viniloParaCarrito: Vinyl & { id: number } = {
+            ...this.viniloSeleccionado,
+            id: this.viniloSeleccionado.id
+          };
+          
+          this.cartService.addToCart(viniloParaCarrito);
           await this.presentToast(`${this.viniloSeleccionado.titulo} agregado al carrito`);
           
           await this.cargarVinilos();
@@ -100,6 +89,8 @@ export class VinilosPage implements OnInit {
       } else {
         await this.presentToast('Por favor, inicia sesión para agregar al carrito.', 'warning');
       }
+    } else {
+      await this.presentToast('No se puede agregar este vinilo al carrito.', 'danger');
     }
   }
 

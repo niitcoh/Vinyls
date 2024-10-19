@@ -132,21 +132,41 @@ export class DatabaseService {
 
   async createTables() {
     try {
+      console.log('Iniciando creación de tablas...');
+      
       await this.database.executeSql('DROP TABLE IF EXISTS Users', []);
+      console.log('Tabla Users eliminada si existía.');
+      
       await this.database.executeSql('DROP TABLE IF EXISTS Vinyls', []);
+      console.log('Tabla Vinyls eliminada si existía.');
+      
       await this.database.executeSql('DROP TABLE IF EXISTS Orders', []);
+      console.log('Tabla Orders eliminada si existía.');
+      
       await this.database.executeSql('DROP TABLE IF EXISTS OrderDetails', []);
-  
+      console.log('Tabla OrderDetails eliminada si existía.');
+      
+      // Crear tablas en orden correcto
       await this.database.executeSql(this.tableUsers, []);
+      console.log('Tabla Users creada.');
+      
       await this.database.executeSql(this.tableVinyls, []);
+      console.log('Tabla Vinyls creada.');
+      
       await this.database.executeSql(this.tableOrders, []);
+      console.log('Tabla Orders creada.');
+      
       await this.database.executeSql(this.tableOrderDetails, []);
-  
+      console.log('Tabla OrderDetails creada.');
+      
       await this.insertSeedData().toPromise();
-  
+      console.log('Datos iniciales insertados.');
+      
       this.loadInitialData();
       this.isDBReady.next(true);
+      console.log('Base de datos lista.');
     } catch (e) {
+      console.error('Error al crear las tablas:', e);
       this.presentAlert('Creación de Tablas', 'Error al crear las tablas: ' + JSON.stringify(e));
     }
   }

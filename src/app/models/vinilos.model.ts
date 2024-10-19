@@ -1,5 +1,5 @@
 export interface Vinyl {
-  id: any;  
+  id?: number;  
   titulo: string;
   artista: string;
   imagen: string;
@@ -8,7 +8,5 @@ export interface Vinyl {
   stock: number;
   precio: number;
   quantity?: number;
-  IsAvailable?: boolean;
+  IsAvailable: boolean;  
 }
-  
-  

@@ -1,9 +1,12 @@
-export interface OrderDetail {
+export interface Order {
     id?: number;
-    orderId: number;
-    productId: number;
-    quantity: number;
-    price: number;
-    name?: string;
-    image?: string;
+    userId: number;
+    createdAt?: string;
+    status: string;
+    totalAmount: number;
+    orderDetails: {
+      productId: number;
+      quantity: number;
+      price: number;
+    }[];
   }

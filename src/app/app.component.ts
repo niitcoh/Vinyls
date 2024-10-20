@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { NavController, MenuController, Platform } from '@ionic/angular';
 import { AuthService } from './services/auth.service';
 import { DatabaseService } from './services/database.service';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-root',
@@ -42,13 +43,21 @@ export class AppComponent {
   async initializeApp() {
     try {
       await this.platform.ready();
-      await this.databaseService.isDatabaseReady().toPromise();
-      // La base de datos está lista, puedes continuar con la inicialización de la app
-      console.log('Database is ready');
-      // Aquí puedes agregar cualquier lógica adicional que necesites ejecutar después de que la base de datos esté lista
+      await firstValueFrom(this.databaseService.isDatabaseReady());
+      console.log('Base de datos lista');
+      
+      // Insertar datos de prueba
+      const datosInsertados = await firstValueFrom(this.databaseService.insertSeedData());
+      if (datosInsertados) {
+        console.log('Datos de prueba insertados correctamente');
+      } else {
+        console.log('Los datos de prueba ya existen o no se pudieron insertar');
+      }
+      
+      // Aquí puedes agregar lógica adicional de inicialización
     } catch (error) {
-      console.error('Error initializing app', error);
-      // Manejar el error, quizás mostrar un mensaje al usuario
+      console.error('Error al inicializar la aplicación', error);
+      // Manejar el error, tal vez mostrar un mensaje al usuario
     }
   }
 

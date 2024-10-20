@@ -26,6 +26,7 @@ export class DatabaseService {
     });
   }
 
+
   private async initializeDatabase() {
     const dbName = 'vinilos.db';
     try {
@@ -159,6 +160,7 @@ export class DatabaseService {
       })
     );
   }
+
 
   // Order methods
   createOrder(order: Order): Observable<number> {

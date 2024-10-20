@@ -4,6 +4,7 @@ import { NavController, ToastController } from '@ionic/angular';
 import { AppComponent } from '../app.component';
 import { DatabaseService } from '../services/database.service';
 import { Vinyl } from '../models/vinilos.model';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-vinilos',
@@ -24,23 +25,12 @@ export class VinilosPage implements OnInit {
   ) {}
 
   async ngOnInit() {
-    await this.inicializarDatos();
-  }
-
-  async inicializarDatos() {
-    try {
-      await this.databaseService.isDatabaseReady().toPromise();
-      await this.databaseService.insertSeedData().toPromise();
-      await this.cargarVinilos();
-    } catch (error) {
-      console.error('Error al inicializar datos:', error);
-      await this.presentToast('Error al inicializar datos. Por favor, intente más tarde.', 'danger');
-    }
+    await this.cargarVinilos();
   }
 
   async cargarVinilos() {
     try {
-      const vinilosFromDB = await this.databaseService.getVinyls().toPromise();
+      const vinilosFromDB = await firstValueFrom(this.databaseService.getVinyls());
       this.vinilos = vinilosFromDB || [];
       this.vinilosFiltrados = this.vinilos;
       if (this.vinilos.length === 0) {
@@ -78,9 +68,8 @@ export class VinilosPage implements OnInit {
     if (this.viniloSeleccionado && this.viniloSeleccionado.id !== undefined) {
       if (AppComponent.isLoggedIn) {
         try {
-          await this.databaseService.updateVinylStock(this.viniloSeleccionado.id, this.viniloSeleccionado.stock - 1).toPromise();
+          await firstValueFrom(this.databaseService.updateVinylStock(this.viniloSeleccionado.id, this.viniloSeleccionado.stock - 1));
           
-          // Creamos una copia del vinilo seleccionado con id como número
           const viniloParaCarrito: Vinyl & { id: number } = {
             ...this.viniloSeleccionado,
             id: this.viniloSeleccionado.id

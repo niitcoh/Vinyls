@@ -20,23 +20,30 @@ export class DatabaseService {
     private alertController: AlertController
   ) {
     this.platform.ready().then(() => {
-      this.initializeDatabase();
+      this.sqlite.create({
+        name: 'vinilos.db',
+        location: 'default'
+      })
+      .then((db: SQLiteObject) => {
+        this.database = db;
+        this.initializeDatabase();
+      })
+      .catch(e => console.log(e));
     });
   }
 
   private async initializeDatabase() {
     try {
-      this.database = await this.sqlite.create({
-        name: 'vinilos.db',
-        location: 'default'
-      });
-
       await this.createTables();
       this.dbReady.next(true);
     } catch (error) {
       console.error('Error initializing database', error);
       this.presentAlert('Error', 'Failed to initialize the database. Please try again.');
     }
+  }
+
+  isDatabaseReady(): Observable<boolean> {
+    return this.dbReady.asObservable();
   }
 
   private async createTables() {

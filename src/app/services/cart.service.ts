@@ -1,24 +1,18 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
+import { Vinyl as BaseVinyl } from '../models/vinilos.model';  // Importa la interfaz base
 
-export interface Vinyl {
-  id: number;
-  titulo: string;
-  artista: string;
-  imagen: string;
-  descripcion: string[];
-  tracklist: string[];
-  stock: number;
-  precio: number;
-  quantity?: number;
+
+export interface CartVinyl extends BaseVinyl {
+  quantity: number;  // Hacemos quantity requerido para los items del carrito
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class CartService {
-  private cart: Vinyl[] = [];
-  private cartSubject = new BehaviorSubject<Vinyl[]>([]);
+  private cart: CartVinyl[] = [];
+  private cartSubject = new BehaviorSubject<CartVinyl[]>([]);
 
   constructor() { }
 
@@ -26,13 +20,13 @@ export class CartService {
     return this.cartSubject.asObservable();
   }
 
-  addToCart(vinyl: Vinyl) {
+  addToCart(vinyl: BaseVinyl) {
     const existingVinyl = this.cart.find(item => item.id === vinyl.id);
     if (existingVinyl) {
-      existingVinyl.quantity! += 1;
+      existingVinyl.quantity += 1;
     } else {
-      vinyl.quantity = 1;
-      this.cart.push(vinyl);
+      const cartItem: CartVinyl = { ...vinyl, quantity: 1 };
+      this.cart.push(cartItem);
     }
     this.cartSubject.next(this.cart);
   }
@@ -48,10 +42,10 @@ export class CartService {
   }
 
   getTotal() {
-    return this.cart.reduce((total, item) => total + (item.precio * (item.quantity || 1)), 0);
+    return this.cart.reduce((total, item) => total + (item.precio * item.quantity), 0);
   }
 
   getCartItemCount() {
-    return this.cart.reduce((count, item) => count + (item.quantity || 1), 0);
+    return this.cart.reduce((count, item) => count + item.quantity, 0);
   }
 }

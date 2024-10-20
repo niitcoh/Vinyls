@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { CartService, Vinyl } from '../services/cart.service';
+import { CartService, CartVinyl } from '../services/cart.service';
+import { Vinyl } from '../models/vinilos.model';  
 import { AppComponent } from '../app.component';
 import { ToastController } from '@ionic/angular';
 
@@ -32,7 +33,8 @@ export class HomePage implements OnInit, OnDestroy {
         'Hospital for Souls'
       ],
       stock: 10,
-      precio: 35990
+      precio: 35990,
+      IsAvailable: true  // Añadido
     },
     {
       id: 6,
@@ -56,7 +58,8 @@ export class HomePage implements OnInit, OnDestroy {
         'Oh No'
       ],
       stock: 10,
-      precio: 41990
+      precio: 41990,
+      IsAvailable: true  // Añadido
     },
     {
       id: 7,
@@ -80,7 +83,8 @@ export class HomePage implements OnInit, OnDestroy {
         'Falling Down'
       ],
       stock: 10,
-      precio: 33900
+      precio: 33900,
+      IsAvailable: true  // Añadido
     },
   ];
 

@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { CartService, Vinyl } from '../services/cart.service';
+import { CartService, CartVinyl } from '../services/cart.service';
 
 @Component({
   selector: 'app-cart',
@@ -7,14 +7,14 @@ import { CartService, Vinyl } from '../services/cart.service';
   styleUrls: ['./cart.page.scss'],
 })
 export class CartPage implements OnInit {
-  cart: Vinyl[] = [];
+  cart: (CartVinyl & { id: number })[] = [];
   total = 0;
 
   constructor(private cartService: CartService) { }
 
   ngOnInit() {
     this.cartService.getCart().subscribe((cart) => {
-      this.cart = cart;
+      this.cart = cart.filter(item => item.id !== undefined) as (CartVinyl & { id: number })[];
       this.total = this.cartService.getTotal();
     });
   }
@@ -28,8 +28,13 @@ export class CartPage implements OnInit {
     });
   }
 
-  removeItem(vinylId: number) {
-    this.cartService.removeFromCart(vinylId);
+  removeItem(vinylId: number | undefined) {
+    if (vinylId !== undefined) {
+      this.cartService.removeFromCart(vinylId);
+    } else {
+      console.error('Attempted to remove item with undefined id');
+      // Opcionalmente, puedes mostrar un mensaje al usuario
+    }
   }
 
   clearCart() {

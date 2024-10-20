@@ -41,6 +41,7 @@ export class DatabaseService {
       await db.open();
       this.database = db;
       await this.createTables();
+      await this.insertSeedData().toPromise(); // Llamamos a insertSeedData aquí
       this.dbReady.next(true);
     } catch (error) {
       console.error('Error initializing database', error);

@@ -24,21 +24,31 @@ export class VinilosPage implements OnInit {
   ) {}
 
   async ngOnInit() {
-    await this.cargarVinilos();
+    await this.inicializarDatos();
+  }
+
+  async inicializarDatos() {
+    try {
+      await this.databaseService.isDatabaseReady().toPromise();
+      await this.databaseService.insertSeedData().toPromise();
+      await this.cargarVinilos();
+    } catch (error) {
+      console.error('Error al inicializar datos:', error);
+      await this.presentToast('Error al inicializar datos. Por favor, intente más tarde.', 'danger');
+    }
   }
 
   async cargarVinilos() {
     try {
-      this.databaseService.getVinyls().subscribe((vinilosFromDB: Vinyl[]) => {
-        this.vinilos = vinilosFromDB;
-        this.vinilosFiltrados = this.vinilos;
-      }, (error: any) => {
-        console.error('Error al cargar vinilos:', error);
-        this.presentToast('Error al cargar vinilos. Por favor, intente más tarde.');
-      });
+      const vinilosFromDB = await this.databaseService.getVinyls().toPromise();
+      this.vinilos = vinilosFromDB || [];
+      this.vinilosFiltrados = this.vinilos;
+      if (this.vinilos.length === 0) {
+        await this.presentToast('No se encontraron vinilos en la base de datos.', 'warning');
+      }
     } catch (error) {
       console.error('Error al cargar vinilos:', error);
-      await this.presentToast('Error al cargar vinilos. Por favor, intente más tarde.');
+      await this.presentToast('Error al cargar vinilos. Por favor, intente más tarde.', 'danger');
     }
   }
 

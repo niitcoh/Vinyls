@@ -6,6 +6,12 @@
       </ion-toolbar>
     </ion-header>
     <ion-content class="ion-padding">
+      <!-- Logo and Title at the top -->
+      <div class="logo-container">
+        <img src="assets/img/icon.png" alt="Logo" class="menu-logo">
+        <span class="logo-title">Vinyls</span>
+      </div>
+
       <ion-list>
         <ion-item *ngIf="isLoggedIn">
           <ion-label>
@@ -28,7 +34,8 @@
         <ion-item routerLink="/cart" routerDirection="root" (click)="closeMenu()">
           <ion-icon name="cart-outline" slot="start"></ion-icon>
           <ion-label>Carrito</ion-label>
-        </ion-item>        
+        </ion-item>
+
         <!-- Opción para admin -->
         <ion-item *ngIf="isAdmin" routerLink="/vinilo-crud" routerDirection="root" (click)="closeMenu()">
           <ion-icon name="create-outline" slot="start"></ion-icon>

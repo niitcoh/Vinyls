@@ -21,18 +21,11 @@ ion-content {
   font-family: 'Georgia', serif;
 
   &::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    background: rgba($background-color, 0.3);
-    backdrop-filter: sepia(20%);
+    content: none;
   }
 }
 
-.register-container {
+.login-container {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -62,7 +55,7 @@ h2 {
   letter-spacing: 2px;
 }
 
-#register-form {
+#login-form {
   width: 100%;
   max-width: 300px;
 }
@@ -98,6 +91,19 @@ label {
   z-index: 1;
 }
 
+a {
+  display: block;
+  text-align: right;
+  color: $accent-color;
+  text-decoration: none;
+  margin-bottom: 20px;
+  font-style: italic;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
 ion-button {
   --background: #{$primary-color};
   --color: #{$light-text-color};
@@ -115,7 +121,43 @@ ion-button {
   }
 }
 
-// Evitar que el contenido se desplace
+// Media queries para responsividad
+@media (max-width: 768px) {
+  .login-container {
+    width: 95%;
+    padding: 20px;
+  }
+
+  h2 {
+    font-size: 1.8em;
+  }
+}
+
+@media (max-height: 800px) {
+  .login-container {
+    top: 0;
+    transform: translate(-50%, 0);
+    margin: 20px 0;
+    position: absolute;
+  }
+}
+
+// Ajustes para cuando el teclado está abierto en dispositivos móviles
+.keyboard-open .login-container {
+  position: absolute;
+  top: 0;
+  transform: translate(-50%, 0);
+  margin: 20px 0;
+}
+
 ion-content {
   --overflow: hidden;
+}
+
+// Asegurarse de que el contenido sea scrolleable en dispositivos pequeños
+@media (max-height: 600px) {
+  .login-container {
+    height: 100%;
+    overflow-y: auto;
+  }
 }

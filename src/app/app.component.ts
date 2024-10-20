@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { NavController, MenuController } from '@ionic/angular';
-import { AuthService } from './services/auth.service'; // Importar el AuthService
+import { AuthService } from './services/auth.service';
+import { defineCustomElements } from '@ionic/pwa-elements/loader';
 
 @Component({
   selector: 'app-root',
@@ -31,10 +32,9 @@ export class AppComponent {
   constructor(
     private navCtrl: NavController,
     private menuCtrl: MenuController,
-    private authService: AuthService  
+    private authService: AuthService
   ) {}
 
-  // Metodo para cerrar sesión
   logout() {
     this.authService.logout();
     this.navCtrl.navigateRoot('/home');

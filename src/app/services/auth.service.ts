@@ -25,12 +25,20 @@ export class AuthService {
   login(email: string, role: string) {
     this._userEmail = email;
     this._userRole = role;
-    this._isLoggedIn = true;  // Asegurarse de que el estado de autenticación sea verdadero
+    this._isLoggedIn = true;
   }
 
   logout() {
     this._userEmail = '';
     this._userRole = '';
     this._isLoggedIn = false;
+  }
+
+  isAuthenticated(): boolean {
+    return this._isLoggedIn;
+  }
+
+  getUserRole(): string {
+    return this._userRole;
   }
 }

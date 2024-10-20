@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
-import { SQLite, SQLiteObject } from '@awesome-cordova-plugins/sqlite/ngx';
-import { AlertController, Platform } from '@ionic/angular';
+import { Platform, AlertController } from '@ionic/angular';
 import { BehaviorSubject, Observable, from } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { map, catchError, switchMap } from 'rxjs/operators';
+import { Capacitor } from '@capacitor/core';
+import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from '@capacitor-community/sqlite';
 import { User } from '../models/user.model';
 import { Vinyl } from '../models/vinilos.model';
 import { Order } from '../models/order.model';
@@ -11,41 +12,53 @@ import { Order } from '../models/order.model';
   providedIn: 'root'
 })
 export class DatabaseService {
-  private database!: SQLiteObject;
+  private database!: SQLiteDBConnection;
   private dbReady: BehaviorSubject<boolean> = new BehaviorSubject(false);
+  private sqlite: SQLiteConnection;
 
   constructor(
-    private platform: Platform, 
-    private sqlite: SQLite,
+    private platform: Platform,
     private alertController: AlertController
   ) {
+    this.sqlite = new SQLiteConnection(CapacitorSQLite);
     this.platform.ready().then(() => {
       this.initializeDatabase();
     });
   }
 
   private async initializeDatabase() {
+    const dbName = 'vinilos.db';
     try {
-      this.database = await this.sqlite.create({
-        name: 'vinilos.db',
-        location: 'default'
-      });
-
+      const retCC = await this.sqlite.checkConnectionsConsistency();
+      const isConn = (await this.sqlite.isConnection(dbName, false)).result;
+      let db: SQLiteDBConnection;
+      if (retCC.result && isConn) {
+        db = await this.sqlite.retrieveConnection(dbName, false);
+      } else {
+        db = await this.sqlite.createConnection(dbName, false, "no-encryption", 1, false);
+      }
+      await db.open();
+      this.database = db;
       await this.createTables();
       this.dbReady.next(true);
     } catch (error) {
       console.error('Error initializing database', error);
-      this.presentAlert('Error', 'Failed to initialize the database. Please try again.');
+      await this.presentAlert('Error', 'Failed to initialize the database. Please try again.');
     }
+  }
+
+  isDatabaseReady(): Observable<boolean> {
+    return this.dbReady.asObservable();
   }
 
   private async createTables() {
     const tables = [this.tableUsers, this.tableVinyls, this.tableOrders];
     for (const table of tables) {
-      await this.database.executeSql(table, []);
+      await this.database.run(table);
     }
   }
 
+  // Define your table creation SQL strings here
   private tableUsers: string = `
     CREATE TABLE IF NOT EXISTS Users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,63 +105,68 @@ export class DatabaseService {
     await alert.present();
   }
 
+  private executeSQL(query: string, params: any[] = []): Observable<any> {
+    return this.isDatabaseReady().pipe(
+      switchMap(ready => {
+        if (ready) {
+          return from(this.database.query(query, params));
+        } else {
+          throw new Error('Database not ready');
+        }
+      }),
+      catchError(error => {
+        console.error('SQL execution error', error);
+        return from([]);
+      })
+    );
+  }
+
   // User methods
   createUser(user: User): Observable<number> {
-    return from(this.database.executeSql(
+    return this.executeSQL(
       'INSERT INTO Users (username, password, role, name, email, phoneNumber) VALUES (?, ?, ?, ?, ?, ?)',
       [user.username, user.password, user.role, user.name, user.email, user.phoneNumber]
-    )).pipe(
-      map(data => data.insertId)
+    ).pipe(
+      map(data => data.changes?.lastId || -1)
     );
   }
 
   getUsers(): Observable<User[]> {
-    return from(this.database.executeSql('SELECT * FROM Users', [])).pipe(
-      map(data => {
-        let users: User[] = [];
-        for (let i = 0; i < data.rows.length; i++) {
-          users.push(data.rows.item(i));
-        }
-        return users;
-      })
+    return this.executeSQL('SELECT * FROM Users').pipe(
+      map(data => data.values as User[])
     );
   }
 
   // Vinyl methods
   createVinyl(vinyl: Vinyl): Observable<number> {
-    return from(this.database.executeSql(
+    return this.executeSQL(
       'INSERT INTO Vinyls (titulo, artista, imagen, descripcion, tracklist, stock, precio, IsAvailable) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [vinyl.titulo, vinyl.artista, vinyl.imagen, JSON.stringify(vinyl.descripcion), JSON.stringify(vinyl.tracklist), vinyl.stock, vinyl.precio, vinyl.IsAvailable ? 1 : 0]
-    )).pipe(
-      map(data => data.insertId)
+    ).pipe(
+      map(data => data.changes?.lastId || -1)
     );
   }
 
   getVinyls(): Observable<Vinyl[]> {
-    return from(this.database.executeSql('SELECT * FROM Vinyls', [])).pipe(
+    return this.executeSQL('SELECT * FROM Vinyls').pipe(
       map(data => {
-        let vinyls: Vinyl[] = [];
-        for (let i = 0; i < data.rows.length; i++) {
-          let item = data.rows.item(i);
-          vinyls.push({
-            ...item,
-            descripcion: JSON.parse(item.descripcion),
-            tracklist: JSON.parse(item.tracklist),
-            IsAvailable: item.IsAvailable === 1
-          });
-        }
-        return vinyls;
+        return (data.values as any[]).map(item => ({
+          ...item,
+          descripcion: JSON.parse(item.descripcion),
+          tracklist: JSON.parse(item.tracklist),
+          IsAvailable: item.IsAvailable === 1
+        }));
       })
     );
   }
 
   // Order methods
   createOrder(order: Order): Observable<number> {
-    return from(this.database.executeSql(
+    return this.executeSQL(
       'INSERT INTO Orders (userId, status, totalAmount, orderDetails) VALUES (?, ?, ?, ?)',
       [order.userId, order.status, order.totalAmount, JSON.stringify(order.orderDetails)]
-    )).pipe(
-      map(data => data.insertId)
+    ).pipe(
+      map(data => data.changes?.lastId || -1)
     );
   }
 
@@ -161,44 +179,82 @@ export class DatabaseService {
       params.push(userId);
     }
     
-    return from(this.database.executeSql(query, params)).pipe(
+    return this.executeSQL(query, params).pipe(
       map(data => {
-        let orders: Order[] = [];
-        for (let i = 0; i < data.rows.length; i++) {
-          let item = data.rows.item(i);
-          orders.push({
-            ...item,
-            orderDetails: JSON.parse(item.orderDetails)
-          });
-        }
-        return orders;
+        return (data.values as any[]).map(item => ({
+          ...item,
+          orderDetails: JSON.parse(item.orderDetails)
+        }));
       })
     );
   }
 
   // Authentication method
   authenticateUser(username: string, password: string): Observable<User | null> {
-    return from(this.database.executeSql(
+    return this.executeSQL(
       'SELECT * FROM Users WHERE username = ? AND password = ?',
       [username, password]
-    )).pipe(
-      map(data => {
-        if (data.rows.length > 0) {
-          return data.rows.item(0);
-        }
-        return null;
-      })
+    ).pipe(
+      map(data => data.values && data.values.length > 0 ? data.values[0] as User : null)
     );
   }
 
   // Update vinyl stock
   updateVinylStock(vinylId: number, newStock: number): Observable<boolean> {
-    return from(this.database.executeSql(
+    return this.executeSQL(
       'UPDATE Vinyls SET stock = ? WHERE id = ?',
       [newStock, vinylId]
-    )).pipe(
+    ).pipe(
       map(() => true),
       catchError(() => from([false]))
+    );
+  }
+
+  insertSeedData(): Observable<boolean> {
+    const users = [
+      { username: 'admin', password: 'admin123', role: 'admin', name: 'Admin User', email: 'admin@example.com', phoneNumber: '966189340' ,createdAt: '2021-07-01 10:00:00', lastLogin: '2021-07-01 10:00:00' },
+      { username: 'employee1', password: 'emp123', role: 'employee', name: 'Employee One', email: 'emp1@example.com', phoneNumber: '91182739,', createdAt: '2021-07-01 10:00:00', lastLogin: '2021-07-01 10:00:00' },
+    ];
+  
+    const products = [
+      { titulo: 'Hit me hard & soft', artista: 'Billie Eilish', imagen:'assets/img/hitme.jpg' , descripcion: 
+        'El tercer álbum de estudio de Billie Eilish, «HIT ME HARD AND SOFT», lanzado a través de Darkroom/Interscope Records, es su trabajo más atrevido hasta la fecha, una colección diversa pero cohesiva de canciones, idealmente escuchadas en su totalidad, de principio a fin. ' +
+        'Exactamente como sugiere el título del álbum; te golpea fuerte y suave tanto lírica como sonoramente, mientras cambia géneros y desafía tendencias a lo largo del camino. ' +
+        'Con la ayuda de su hermano y único colaborador, FINNEAS, la pareja escribió, grabó y produjo el álbum juntos en su ciudad natal de Los Ángeles. ' +
+        'Este álbum llega inmediatamente después de sus dos álbumes de gran éxito, «WHEN WE ALL FALL ASLEEP WHERE DO WE GO?» y «Happier Than Ever», y trabaja para desarrollar aún más el mundo de Billie Eilish.', 
+        tracklist: [
+        'Skinny',
+        'Lunch',
+        'Chihiro',
+        'Birds Of A Feather',
+        'Wildflower',
+        'The Greatest',
+        'LAmour De Ma Vie',
+        'The Diner',
+        'Bittersuite',
+        'Blue'
+        ], stock: 10 ,precio: 5.00, IsAvailable: true },
+    ];
+  
+    return from(Promise.all([
+      ...users.map(user => 
+        this.database.run(
+          'INSERT OR IGNORE INTO Users (username, password, role, name, email, phoneNumber, createdAt, lastLogin) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+          [user.username, user.password, user.role, user.name, user.email, user.phoneNumber, user.createdAt, user.lastLogin]
+        )
+      ),
+      ...products.map(vinyl => 
+        this.database.run(
+          'INSERT OR IGNORE INTO Vinyls (titulo, artista, imagen, descripcion, tracklist, stock, precio, IsAvailable) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+          [vinyl.titulo, vinyl.artista, vinyl.imagen, JSON.stringify(vinyl.descripcion), JSON.stringify(vinyl.tracklist), vinyl.stock, vinyl.precio, vinyl.IsAvailable ? 1 : 0]
+        )
+      )
+    ])).pipe(
+      map(() => true),
+      catchError(error => {
+        console.error('Error in insertSeedData:', error);
+        return from([false]);
+      })
     );
   }
 }

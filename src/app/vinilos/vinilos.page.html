@@ -45,9 +45,7 @@
         </ion-segment>
 
         <div *ngIf="mostrarDescripcionDetalle === 'descripcion'">
-          <div *ngFor="let parrafo of viniloSeleccionado?.descripcion">
-            <p>{{ parrafo }}</p>
-          </div>
+          <p [innerHTML]="getDescripcionTexto(viniloSeleccionado)"></p>
         </div>
 
         <div *ngIf="mostrarDescripcionDetalle === 'tracklist'">

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Platform, AlertController } from '@ionic/angular';
-import { BehaviorSubject, Observable, from } from 'rxjs';
-import { map, catchError, switchMap } from 'rxjs/operators';
+import { BehaviorSubject, Observable, from, of } from 'rxjs';
+import { map, catchError, switchMap, tap } from 'rxjs/operators';
 import { Capacitor } from '@capacitor/core';
 import { CapacitorSQLite, SQLiteConnection, SQLiteDBConnection } from '@capacitor-community/sqlite';
 import { User } from '../models/user.model';
@@ -149,15 +149,23 @@ export class DatabaseService {
   }
 
   getVinyls(): Observable<Vinyl[]> {
+    console.log('Intentando obtener vinilos de la base de datos');
     return this.executeSQL('SELECT * FROM Vinyls').pipe(
+      tap(data => console.log('Datos crudos de la base de datos:', data)),
       map(data => {
+        if (!data.values || data.values.length === 0) {
+          console.log('No se encontraron vinilos en la base de datos');
+          return [];
+        }
+        console.log('Número de vinilos encontrados:', data.values.length);
         return (data.values as any[]).map(item => ({
           ...item,
           descripcion: JSON.parse(item.descripcion),
           tracklist: JSON.parse(item.tracklist),
           IsAvailable: item.IsAvailable === 1
         }));
-      })
+      }),
+      tap(vinyls => console.log('Vinilos procesados:', vinyls))
     );
   }
 
@@ -213,49 +221,62 @@ export class DatabaseService {
   }
 
   insertSeedData(): Observable<boolean> {
+    console.log('Iniciando inserción de datos de prueba');
     const users = [
       { username: 'admin', password: 'admin123', role: 'admin', name: 'Admin User', email: 'admin@example.com', phoneNumber: '966189340' ,createdAt: '2021-07-01 10:00:00', lastLogin: '2021-07-01 10:00:00' },
       { username: 'employee1', password: 'emp123', role: 'employee', name: 'Employee One', email: 'emp1@example.com', phoneNumber: '91182739,', createdAt: '2021-07-01 10:00:00', lastLogin: '2021-07-01 10:00:00' },
     ];
   
-    const products = [
-      { titulo: 'Hit me hard & soft', artista: 'Billie Eilish', imagen:'assets/img/hitme.jpg' , descripcion: 
-        'El tercer álbum de estudio de Billie Eilish, «HIT ME HARD AND SOFT», lanzado a través de Darkroom/Interscope Records, es su trabajo más atrevido hasta la fecha, una colección diversa pero cohesiva de canciones, idealmente escuchadas en su totalidad, de principio a fin. ' +
-        'Exactamente como sugiere el título del álbum; te golpea fuerte y suave tanto lírica como sonoramente, mientras cambia géneros y desafía tendencias a lo largo del camino. ' +
-        'Con la ayuda de su hermano y único colaborador, FINNEAS, la pareja escribió, grabó y produjo el álbum juntos en su ciudad natal de Los Ángeles. ' +
-        'Este álbum llega inmediatamente después de sus dos álbumes de gran éxito, «WHEN WE ALL FALL ASLEEP WHERE DO WE GO?» y «Happier Than Ever», y trabaja para desarrollar aún más el mundo de Billie Eilish.', 
+    const products: Vinyl[] = [
+      { 
+        titulo: 'Hit me hard & soft', 
+        artista: 'Billie Eilish', 
+        imagen: 'assets/img/hitme.jpg', 
+        descripcion: [
+          'El tercer álbum de estudio de Billie Eilish, «HIT ME HARD AND SOFT», lanzado a través de Darkroom/Interscope Records, es su trabajo más atrevido hasta la fecha, una colección diversa pero cohesiva de canciones, idealmente escuchadas en su totalidad, de principio a fin.',
+          'Exactamente como sugiere el título del álbum; te golpea fuerte y suave tanto lírica como sonoramente, mientras cambia géneros y desafía tendencias a lo largo del camino.',
+          'Con la ayuda de su hermano y único colaborador, FINNEAS, la pareja escribió, grabó y produjo el álbum juntos en su ciudad natal de Los Ángeles.',
+          'Este álbum llega inmediatamente después de sus dos álbumes de gran éxito, «WHEN WE ALL FALL ASLEEP WHERE DO WE GO?» y «Happier Than Ever», y trabaja para desarrollar aún más el mundo de Billie Eilish.'
+        ],
         tracklist: [
-        'Skinny',
-        'Lunch',
-        'Chihiro',
-        'Birds Of A Feather',
-        'Wildflower',
-        'The Greatest',
-        'LAmour De Ma Vie',
-        'The Diner',
-        'Bittersuite',
-        'Blue'
-        ], stock: 10 ,precio: 5.00, IsAvailable: true },
+          'Skinny',
+          'Lunch',
+          'Chihiro',
+          'Birds Of A Feather',
+          'Wildflower',
+          'The Greatest',
+          'LAmour De Ma Vie',
+          'The Diner',
+          'Bittersuite',
+          'Blue'
+        ],
+        stock: 10,
+        precio: 5.00,
+        IsAvailable: true 
+      },
     ];
   
     return from(Promise.all([
       ...users.map(user => 
         this.database.run(
-          'INSERT OR IGNORE INTO Users (username, password, role, name, email, phoneNumber, createdAt, lastLogin) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+          'INSERT OR REPLACE INTO Users (username, password, role, name, email, phoneNumber, createdAt, lastLogin) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
           [user.username, user.password, user.role, user.name, user.email, user.phoneNumber, user.createdAt, user.lastLogin]
-        )
+        ).then(() => console.log(`Usuario insertado: ${user.username}`))
       ),
       ...products.map(vinyl => 
         this.database.run(
-          'INSERT OR IGNORE INTO Vinyls (titulo, artista, imagen, descripcion, tracklist, stock, precio, IsAvailable) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+          'INSERT OR REPLACE INTO Vinyls (titulo, artista, imagen, descripcion, tracklist, stock, precio, IsAvailable) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
           [vinyl.titulo, vinyl.artista, vinyl.imagen, JSON.stringify(vinyl.descripcion), JSON.stringify(vinyl.tracklist), vinyl.stock, vinyl.precio, vinyl.IsAvailable ? 1 : 0]
-        )
+        ).then(() => console.log(`Vinilo insertado: ${vinyl.titulo}`))
       )
     ])).pipe(
-      map(() => true),
+      map(() => {
+        console.log('Datos de prueba insertados correctamente');
+        return true;
+      }),
       catchError(error => {
-        console.error('Error in insertSeedData:', error);
-        return from([false]);
+        console.error('Error en insertSeedData:', error);
+        return of(false);
       })
     );
   }

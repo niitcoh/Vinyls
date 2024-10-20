@@ -30,11 +30,18 @@ export class VinilosPage implements OnInit {
 
   async cargarVinilos() {
     try {
+      console.log('Iniciando carga de vinilos');
       const vinilosFromDB = await firstValueFrom(this.databaseService.getVinyls());
+      console.log('Vinilos obtenidos de la base de datos:', vinilosFromDB);
+      
       this.vinilos = vinilosFromDB || [];
       this.vinilosFiltrados = this.vinilos;
+      
       if (this.vinilos.length === 0) {
+        console.log('No se encontraron vinilos en la base de datos');
         await this.presentToast('No se encontraron vinilos en la base de datos.', 'warning');
+      } else {
+        console.log(`Se cargaron ${this.vinilos.length} vinilos`);
       }
     } catch (error) {
       console.error('Error al cargar vinilos:', error);
@@ -58,6 +65,11 @@ export class VinilosPage implements OnInit {
   mostrarDescripcion(vinilo: Vinyl) {
     this.viniloSeleccionado = vinilo;
     this.mostrarDescripcionDetalle = 'descripcion';
+  }
+
+  getDescripcionTexto(vinilo: Vinyl | null): string {
+    if (!vinilo) return '';
+    return Array.isArray(vinilo.descripcion) ? vinilo.descripcion.join('<br>') : vinilo.descripcion;
   }
 
   cerrarDescripcion() {

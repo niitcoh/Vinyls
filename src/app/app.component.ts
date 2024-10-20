@@ -51,13 +51,15 @@ export class AppComponent {
       if (datosInsertados) {
         console.log('Datos de prueba insertados correctamente');
       } else {
-        console.log('Los datos de prueba ya existen o no se pudieron insertar');
+        console.error('No se pudieron insertar los datos de prueba');
       }
       
-      // Aquí puedes agregar lógica adicional de inicialización
+      // Verificar si hay vinilos en la base de datos
+      const vinilos = await firstValueFrom(this.databaseService.getVinyls());
+      console.log('Número de vinilos en la base de datos después de la inicialización:', vinilos.length);
+      
     } catch (error) {
       console.error('Error al inicializar la aplicación', error);
-      // Manejar el error, tal vez mostrar un mensaje al usuario
     }
   }
 

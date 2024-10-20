@@ -29,6 +29,7 @@ export class VinilosPage implements OnInit {
 
   async cargarVinilos() {
     try {
+      await this.databaseService.isDatabaseReady().toPromise();
       this.databaseService.getVinyls().subscribe((vinilosFromDB: Vinyl[]) => {
         this.vinilos = vinilosFromDB;
         this.vinilosFiltrados = this.vinilos;

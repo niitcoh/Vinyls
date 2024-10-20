@@ -1,11 +1,12 @@
 import { Injectable } from '@angular/core';
 import { SQLite, SQLiteObject } from '@awesome-cordova-plugins/sqlite/ngx';
 import { AlertController, Platform } from '@ionic/angular';
-import { BehaviorSubject, Observable, from } from 'rxjs';
-import { map, catchError } from 'rxjs/operators';
+import { BehaviorSubject, Observable, forkJoin, from, of } from 'rxjs';
+import { map, catchError, switchMap } from 'rxjs/operators';
 import { User } from '../models/user.model';
 import { Vinyl } from '../models/vinilos.model';
 import { Order } from '../models/order.model';
+import { create } from 'ionicons/icons';
 
 @Injectable({
   providedIn: 'root'
@@ -28,7 +29,7 @@ export class DatabaseService {
         this.database = db;
         this.initializeDatabase();
       })
-      .catch(e => console.log(e));
+      .catch(e => console.error('Error creating database', e));
     });
   }
 
@@ -99,18 +100,34 @@ export class DatabaseService {
     await alert.present();
   }
 
+  private executeSQL(query: string, params: any[] = []): Observable<any> {
+    return this.isDatabaseReady().pipe(
+      switchMap(ready => {
+        if (ready) {
+          return from(this.database.executeSql(query, params));
+        } else {
+          throw new Error('Database not ready');
+        }
+      }),
+      catchError(error => {
+        console.error('SQL execution error', error);
+        return from([]);
+      })
+    );
+  }
+
   // User methods
   createUser(user: User): Observable<number> {
-    return from(this.database.executeSql(
+    return this.executeSQL(
       'INSERT INTO Users (username, password, role, name, email, phoneNumber) VALUES (?, ?, ?, ?, ?, ?)',
       [user.username, user.password, user.role, user.name, user.email, user.phoneNumber]
-    )).pipe(
+    ).pipe(
       map(data => data.insertId)
     );
   }
 
   getUsers(): Observable<User[]> {
-    return from(this.database.executeSql('SELECT * FROM Users', [])).pipe(
+    return this.executeSQL('SELECT * FROM Users').pipe(
       map(data => {
         let users: User[] = [];
         for (let i = 0; i < data.rows.length; i++) {
@@ -123,16 +140,16 @@ export class DatabaseService {
 
   // Vinyl methods
   createVinyl(vinyl: Vinyl): Observable<number> {
-    return from(this.database.executeSql(
+    return this.executeSQL(
       'INSERT INTO Vinyls (titulo, artista, imagen, descripcion, tracklist, stock, precio, IsAvailable) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [vinyl.titulo, vinyl.artista, vinyl.imagen, JSON.stringify(vinyl.descripcion), JSON.stringify(vinyl.tracklist), vinyl.stock, vinyl.precio, vinyl.IsAvailable ? 1 : 0]
-    )).pipe(
+    ).pipe(
       map(data => data.insertId)
     );
   }
 
   getVinyls(): Observable<Vinyl[]> {
-    return from(this.database.executeSql('SELECT * FROM Vinyls', [])).pipe(
+    return this.executeSQL('SELECT * FROM Vinyls').pipe(
       map(data => {
         let vinyls: Vinyl[] = [];
         for (let i = 0; i < data.rows.length; i++) {
@@ -151,10 +168,10 @@ export class DatabaseService {
 
   // Order methods
   createOrder(order: Order): Observable<number> {
-    return from(this.database.executeSql(
+    return this.executeSQL(
       'INSERT INTO Orders (userId, status, totalAmount, orderDetails) VALUES (?, ?, ?, ?)',
       [order.userId, order.status, order.totalAmount, JSON.stringify(order.orderDetails)]
-    )).pipe(
+    ).pipe(
       map(data => data.insertId)
     );
   }
@@ -168,7 +185,7 @@ export class DatabaseService {
       params.push(userId);
     }
     
-    return from(this.database.executeSql(query, params)).pipe(
+    return this.executeSQL(query, params).pipe(
       map(data => {
         let orders: Order[] = [];
         for (let i = 0; i < data.rows.length; i++) {
@@ -185,10 +202,10 @@ export class DatabaseService {
 
   // Authentication method
   authenticateUser(username: string, password: string): Observable<User | null> {
-    return from(this.database.executeSql(
+    return this.executeSQL(
       'SELECT * FROM Users WHERE username = ? AND password = ?',
       [username, password]
-    )).pipe(
+    ).pipe(
       map(data => {
         if (data.rows.length > 0) {
           return data.rows.item(0);
@@ -200,12 +217,63 @@ export class DatabaseService {
 
   // Update vinyl stock
   updateVinylStock(vinylId: number, newStock: number): Observable<boolean> {
-    return from(this.database.executeSql(
+    return this.executeSQL(
       'UPDATE Vinyls SET stock = ? WHERE id = ?',
       [newStock, vinylId]
-    )).pipe(
+    ).pipe(
       map(() => true),
       catchError(() => from([false]))
     );
   }
+
+  insertSeedData(): Observable<boolean> {
+    const users = [
+      { username: 'admin', password: 'admin123', role: 'admin', name: 'Admin User', email: 'admin@example.com', phoneNumber: '966189340' ,createdAt: '2021-07-01 10:00:00', lastLogin: '2021-07-01 10:00:00' },
+      { username: 'employee1', password: 'emp123', role: 'employee', name: 'Employee One', email: 'emp1@example.com', phoneNumber: '91182739,', createdAt: '2021-07-01 10:00:00', lastLogin: '2021-07-01 10:00:00' },
+    ];
+  
+    const products = [
+      { titulo: 'Hit me hard & soft', artista: 'Billie Eilish', imagen:'assets/img/hitme.jpg' , descripcion: 
+        'El tercer álbum de estudio de Billie Eilish, «HIT ME HARD AND SOFT», lanzado a través de Darkroom/Interscope Records, es su trabajo más atrevido hasta la fecha, una colección diversa pero cohesiva de canciones, idealmente escuchadas en su totalidad, de principio a fin. ' +
+        'Exactamente como sugiere el título del álbum; te golpea fuerte y suave tanto lírica como sonoramente, mientras cambia géneros y desafía tendencias a lo largo del camino. ' +
+        'Con la ayuda de su hermano y único colaborador, FINNEAS, la pareja escribió, grabó y produjo el álbum juntos en su ciudad natal de Los Ángeles. ' +
+        'Este álbum llega inmediatamente después de sus dos álbumes de gran éxito, «WHEN WE ALL FALL ASLEEP WHERE DO WE GO?» y «Happier Than Ever», y trabaja para desarrollar aún más el mundo de Billie Eilish.', 
+        tracklist: [
+        'Skinny',
+        'Lunch',
+        'Chihiro',
+        'Birds Of A Feather',
+        'Wildflower',
+        'The Greatest',
+        'LAmour De Ma Vie',
+        'The Diner',
+        'Bittersuite',
+        'Blue'
+        ], stock: true ,precio: 5.00, IsAvailable: true },
+      
+    ];
+  
+    return forkJoin([
+      ...users.map(user => 
+        from(this.database.executeSql(
+          'INSERT OR IGNORE INTO Users (Username, Password, Role, Name, Email, phoneNumber, createdAt, lastLogin) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+          [user.username, user.password, user.role, user.name, user.email, user.phoneNumber, user.createdAt, user.lastLogin]
+        ))
+      ),
+      ...products.map(Vinyl => 
+        from(this.database.executeSql(
+          'INSERT OR IGNORE INTO Products (titulo,artista,imagen,descripcion,tracklist,stock,precio,isAvailable) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+          [Vinyl.titulo, Vinyl.artista, Vinyl.imagen, Vinyl.descripcion, Vinyl.tracklist, Vinyl.stock, Vinyl.precio, Vinyl.IsAvailable]
+        ))
+      )
+    ]).pipe(
+      map(() => true),
+      catchError(error => {
+        console.error('Error in insertSeedData:', error);
+        return of(false);
+      })
+    );
+  }
+
 }
+

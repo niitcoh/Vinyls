@@ -74,7 +74,7 @@ export class DatabaseService {
       lastLogin DATETIME
     );`;
 
-  private tableVinyls: string = `
+    private tableVinyls: string = `
     CREATE TABLE IF NOT EXISTS Vinyls (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       titulo TEXT NOT NULL,
@@ -84,8 +84,11 @@ export class DatabaseService {
       tracklist TEXT,
       stock INTEGER NOT NULL,
       precio REAL NOT NULL,
-      IsAvailable BOOLEAN DEFAULT 1
+      IsAvailable BOOLEAN DEFAULT 1,
+      UNIQUE(titulo, artista)
     );`;
+  
+  
 
   private tableOrders: string = `
     CREATE TABLE IF NOT EXISTS Orders (
@@ -223,61 +226,73 @@ export class DatabaseService {
 
   insertSeedData(): Observable<boolean> {
     console.log('Iniciando inserción de datos de prueba');
-    const users = [
-      { username: 'admin', password: 'admin123', role: 'admin', name: 'Admin User', email: 'admin@example.com', phoneNumber: '966189340' ,createdAt: '2021-07-01 10:00:00', lastLogin: '2021-07-01 10:00:00' },
-      { username: 'employee1', password: 'emp123', role: 'employee', name: 'Employee One', email: 'emp1@example.com', phoneNumber: '91182739,', createdAt: '2021-07-01 10:00:00', lastLogin: '2021-07-01 10:00:00' },
-    ];
+    
+    // Primero, verificamos si ya existen datos en la tabla Vinyls
+    return this.executeSQL('SELECT COUNT(*) as count FROM Vinyls').pipe(
+      switchMap(result => {
+        const count = result.values[0].count;
+        if (count > 0) {
+          console.log('Ya existen datos en la tabla Vinyls. No se insertarán datos de prueba.');
+          return of(true);
+        }
   
-    const products: Vinyl[] = [
-      { 
-        titulo: 'Hit me hard & soft', 
-        artista: 'Billie Eilish', 
-        imagen: 'assets/img/hitme.jpg', 
-        descripcion: [
-          'El tercer álbum de estudio de Billie Eilish, «HIT ME HARD AND SOFT», lanzado a través de Darkroom/Interscope Records, es su trabajo más atrevido hasta la fecha, una colección diversa pero cohesiva de canciones, idealmente escuchadas en su totalidad, de principio a fin.',
-          'Exactamente como sugiere el título del álbum; te golpea fuerte y suave tanto lírica como sonoramente, mientras cambia géneros y desafía tendencias a lo largo del camino.',
-          'Con la ayuda de su hermano y único colaborador, FINNEAS, la pareja escribió, grabó y produjo el álbum juntos en su ciudad natal de Los Ángeles.',
-          'Este álbum llega inmediatamente después de sus dos álbumes de gran éxito, «WHEN WE ALL FALL ASLEEP WHERE DO WE GO?» y «Happier Than Ever», y trabaja para desarrollar aún más el mundo de Billie Eilish.'
-        ],
-        tracklist: [
-          'Skinny',
-          'Lunch',
-          'Chihiro',
-          'Birds Of A Feather',
-          'Wildflower',
-          'The Greatest',
-          'LAmour De Ma Vie',
-          'The Diner',
-          'Bittersuite',
-          'Blue'
-        ],
-        stock: 10,
-        precio: 5.00,
-        IsAvailable: true 
-      },
-    ];
+        const users = [
+          { username: 'admin', password: 'admin123', role: 'admin', name: 'Admin User', email: 'admin@example.com', phoneNumber: '966189340', createdAt: '2021-07-01 10:00:00', lastLogin: '2021-07-01 10:00:00' },
+          { username: 'employee1', password: 'emp123', role: 'employee', name: 'Employee One', email: 'emp1@example.com', phoneNumber: '91182739', createdAt: '2021-07-01 10:00:00', lastLogin: '2021-07-01 10:00:00' },
+        ];
   
-    return from(Promise.all([
-      ...users.map(user => 
-        this.database.run(
-          'INSERT OR REPLACE INTO Users (username, password, role, name, email, phoneNumber, createdAt, lastLogin) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
-          [user.username, user.password, user.role, user.name, user.email, user.phoneNumber, user.createdAt, user.lastLogin]
-        ).then(() => console.log(`Usuario insertado: ${user.username}`))
-      ),
-      ...products.map(vinyl => 
-        this.database.run(
-          'INSERT OR REPLACE INTO Vinyls (titulo, artista, imagen, descripcion, tracklist, stock, precio, IsAvailable) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
-          [vinyl.titulo, vinyl.artista, vinyl.imagen, JSON.stringify(vinyl.descripcion), JSON.stringify(vinyl.tracklist), vinyl.stock, vinyl.precio, vinyl.IsAvailable ? 1 : 0]
-        ).then(() => console.log(`Vinilo insertado: ${vinyl.titulo}`))
-      )
-    ])).pipe(
-      map(() => {
-        console.log('Datos de prueba insertados correctamente');
-        return true;
-      }),
-      catchError(error => {
-        console.error('Error en insertSeedData:', error);
-        return of(false);
+        const products: Vinyl[] = [
+          { 
+            titulo: 'Hit me hard & soft', 
+            artista: 'Billie Eilish', 
+            imagen: 'assets/img/hitme.jpg', 
+            descripcion: [
+              'El tercer álbum de estudio de Billie Eilish, «HIT ME HARD AND SOFT», lanzado a través de Darkroom/Interscope Records, es su trabajo más atrevido hasta la fecha, una colección diversa pero cohesiva de canciones, idealmente escuchadas en su totalidad, de principio a fin.',
+              'Exactamente como sugiere el título del álbum; te golpea fuerte y suave tanto lírica como sonoramente, mientras cambia géneros y desafía tendencias a lo largo del camino.',
+              'Con la ayuda de su hermano y único colaborador, FINNEAS, la pareja escribió, grabó y produjo el álbum juntos en su ciudad natal de Los Ángeles.',
+              'Este álbum llega inmediatamente después de sus dos álbumes de gran éxito, «WHEN WE ALL FALL ASLEEP WHERE DO WE GO?» y «Happier Than Ever», y trabaja para desarrollar aún más el mundo de Billie Eilish.'
+            ],
+            tracklist: [
+              'Skinny',
+              'Lunch',
+              'Chihiro',
+              'Birds Of A Feather',
+              'Wildflower',
+              'The Greatest',
+              'LAmour De Ma Vie',
+              'The Diner',
+              'Bittersuite',
+              'Blue'
+            ],
+            stock: 10,
+            precio: 5.00,
+            IsAvailable: true 
+          },
+        ];
+  
+        return from(Promise.all([
+          ...users.map(user => 
+            this.database.run(
+              'INSERT OR REPLACE INTO Users (username, password, role, name, email, phoneNumber, createdAt, lastLogin) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+              [user.username, user.password, user.role, user.name, user.email, user.phoneNumber, user.createdAt, user.lastLogin]
+            ).then(() => console.log(`Usuario insertado: ${user.username}`))
+          ),
+          ...products.map(vinyl => 
+            this.database.run(
+              'INSERT OR REPLACE INTO Vinyls (titulo, artista, imagen, descripcion, tracklist, stock, precio, IsAvailable) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+              [vinyl.titulo, vinyl.artista, vinyl.imagen, JSON.stringify(vinyl.descripcion), JSON.stringify(vinyl.tracklist), vinyl.stock, vinyl.precio, vinyl.IsAvailable ? 1 : 0]
+            ).then(() => console.log(`Vinilo insertado: ${vinyl.titulo}`))
+          )
+        ])).pipe(
+          map(() => {
+            console.log('Datos de prueba insertados correctamente');
+            return true;
+          }),
+          catchError(error => {
+            console.error('Error en insertSeedData:', error);
+            return of(false);
+          })
+        );
       })
     );
   }

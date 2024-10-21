@@ -56,25 +56,13 @@
 
         <ion-item>
           <ion-label position="stacked">
-            <ion-icon name="people-outline"></ion-icon>
-            Apellido
+            <ion-icon name="call-outline"></ion-icon>
+            Teléfono
           </ion-label>
           <ion-input 
-            [(ngModel)]="currentUser.lastName" 
-            placeholder="Ingrese su apellido"
-            type="text">
-          </ion-input>
-        </ion-item>
-
-        <ion-item>
-          <ion-label position="stacked">
-            <ion-icon name="location-outline"></ion-icon>
-            Dirección
-          </ion-label>
-          <ion-input 
-            [(ngModel)]="currentUser.address" 
-            placeholder="Ingrese su dirección"
-            type="text">
+            [(ngModel)]="currentUser.phoneNumber" 
+            placeholder="Ingrese su número de teléfono"
+            type="tel">
           </ion-input>
         </ion-item>
 
@@ -128,7 +116,7 @@
             </ion-avatar>
             
             <ion-label>
-              <h2>{{ user.name }} {{ user.lastName }}</h2>
+              <h2>{{ user.name }}</h2>
               <p>
                 <ion-icon name="mail-outline"></ion-icon>
                 {{ user.email }}

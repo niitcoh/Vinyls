@@ -6,6 +6,7 @@ export interface User {
   name: string;
   email: string;
   phoneNumber?: string;
+  photo?: string;
   createdAt?: string;
   lastLogin?: string;
 }

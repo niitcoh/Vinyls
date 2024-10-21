@@ -3,7 +3,6 @@
   <div class="login-container">
     <h2>Registro</h2>
     <form id="login-form" (ngSubmit)="register()">
-      <!-- Nuevo campo: Username -->
       <div class="input-box">
         <ion-input [(ngModel)]="username" type="text" name="username" required></ion-input>
         <span class="input-line"></span>
@@ -11,15 +10,9 @@
       </div>
 
       <div class="input-box">
-        <ion-input [(ngModel)]="firstName" type="text" name="firstName" required></ion-input>
+        <ion-input [(ngModel)]="name" type="text" name="name" required></ion-input>
         <span class="input-line"></span>
-        <label for="firstName">Nombre</label>
-      </div>
-
-      <div class="input-box">
-        <ion-input [(ngModel)]="lastName" type="text" name="lastName" required></ion-input>
-        <span class="input-line"></span>
-        <label for="lastName">Apellido</label>
+        <label for="name">Nombre Completo</label>
       </div>
 
       <div class="input-box">

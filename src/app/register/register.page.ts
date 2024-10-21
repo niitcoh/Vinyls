@@ -10,11 +10,10 @@ import { User } from '../models/user.model';
 })
 export class RegisterPage {
   username: string = '';
+  name: string = '';
   email: string = '';
   password: string = '';
   confirmPassword: string = '';
-  firstName: string = '';
-  lastName: string = '';
   phoneNumber: string = '';
 
   constructor(
@@ -33,11 +32,12 @@ export class RegisterPage {
         username: this.username.trim(),
         password: this.password,
         role: 'user',
-        name: `${this.firstName.trim()} ${this.lastName.trim()}`,
+        name: this.name.trim(),
         email: this.email.toLowerCase().trim(),
         phoneNumber: this.phoneNumber?.trim() || '',
         createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString()
+        lastLogin: new Date().toISOString(),
+        photo: '' // Inicializamos el campo photo como una cadena vacía
       };
 
       this.databaseService.createUser(newUser).subscribe({
@@ -65,12 +65,17 @@ export class RegisterPage {
     } catch (error) {
       console.error('Error inesperado:', error);
       await this.presentToast('Ocurrió un error inesperado durante el registro', 'danger');
-    }
+    } 
   }
 
   private async validateFields(): Promise<boolean> {
     if (!this.username?.trim()) {
       await this.presentToast('El nombre de usuario es obligatorio', 'warning');
+      return false;
+    }
+
+    if (!this.name?.trim()) {
+      await this.presentToast('El nombre es obligatorio', 'warning');
       return false;
     }
 
@@ -99,11 +104,6 @@ export class RegisterPage {
       return false;
     }
 
-    if (!this.firstName?.trim() || !this.lastName?.trim()) {
-      await this.presentToast('El nombre y apellido son obligatorios', 'warning');
-      return false;
-    }
-
     return true;
   }
 
@@ -115,11 +115,6 @@ export class RegisterPage {
   validatePassword(password: string): boolean {
     const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,30}$/;
     return passwordRegex.test(password);
-  }
-
-  validateName(name: string): boolean {
-    const nameRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
-    return nameRegex.test(name.trim());
   }
 
   async presentToast(message: string, color: string) {
@@ -134,9 +129,5 @@ export class RegisterPage {
       }]
     });
     await toast.present();
-  }
-
-  goToLogin() {
-    this.navCtrl.navigateForward('/login');
   }
 }

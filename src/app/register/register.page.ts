@@ -1,5 +1,7 @@
 import { Component } from '@angular/core';
 import { NavController, ToastController } from '@ionic/angular';
+import { DatabaseService } from '../services/database.service';
+import { User } from '../models/user.model';
 
 @Component({
   selector: 'app-register',
@@ -7,64 +9,107 @@ import { NavController, ToastController } from '@ionic/angular';
   styleUrls: ['./register.page.scss'],
 })
 export class RegisterPage {
+  username: string = '';
   email: string = '';
   password: string = '';
   confirmPassword: string = '';
   firstName: string = '';
   lastName: string = '';
-
-  users: { email: string, password: string, firstName: string, lastName: string }[] = [];
+  phoneNumber: string = '';
 
   constructor(
     private navCtrl: NavController,
-    private toastController: ToastController
+    private toastController: ToastController,
+    private databaseService: DatabaseService
   ) {}
 
   async register() {
-    if (!this.email || !this.password || !this.confirmPassword || !this.firstName || !this.lastName) {
-      await this.presentToast('Por favor, rellene todos los campos', 'warning');
-      return;
+    try {
+      if (!this.validateFields()) {
+        return;
+      }
+
+      const newUser: User = {
+        username: this.username.trim(),
+        password: this.password,
+        role: 'user',
+        name: `${this.firstName.trim()} ${this.lastName.trim()}`,
+        email: this.email.toLowerCase().trim(),
+        phoneNumber: this.phoneNumber?.trim() || '',
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString()
+      };
+
+      this.databaseService.createUser(newUser).subscribe({
+        next: async (userId) => {
+          if (userId > 0) {
+            await this.presentToast('¡Registro exitoso! Ya puedes iniciar sesión', 'success');
+            setTimeout(() => {
+              this.navCtrl.navigateForward('/login');
+            }, 1000);
+          }
+        },
+        error: async (error) => {
+          console.error('Error durante el registro:', error);
+          let errorMessage = 'Error al registrar usuario';
+          
+          if (error.toString().includes('UNIQUE constraint failed: Users.email')) {
+            errorMessage = 'Este correo electrónico ya está registrado';
+          } else if (error.toString().includes('UNIQUE constraint failed: Users.username')) {
+            errorMessage = 'Este nombre de usuario ya está en uso';
+          }
+          
+          await this.presentToast(errorMessage, 'danger');
+        }
+      });
+    } catch (error) {
+      console.error('Error inesperado:', error);
+      await this.presentToast('Ocurrió un error inesperado durante el registro', 'danger');
+    }
+  }
+
+  private async validateFields(): Promise<boolean> {
+    if (!this.username?.trim()) {
+      await this.presentToast('El nombre de usuario es obligatorio', 'warning');
+      return false;
+    }
+
+    if (!this.email?.trim()) {
+      await this.presentToast('El correo electrónico es obligatorio', 'warning');
+      return false;
     }
 
     if (!this.validateEmail(this.email)) {
-      await this.presentToast('Por favor, ingrese un correo electrónico válido', 'warning');
-      return;
+      await this.presentToast('Por favor, ingresa un correo electrónico válido', 'warning');
+      return false;
+    }
+
+    if (!this.password) {
+      await this.presentToast('La contraseña es obligatoria', 'warning');
+      return false;
     }
 
     if (!this.validatePassword(this.password)) {
-      await this.presentToast('La contraseña debe tener entre 8 y 30 caracteres, incluir al menos una mayúscula y un número', 'warning');
-      return;
+      await this.presentToast('La contraseña debe tener al menos 8 caracteres, una mayúscula y un número', 'warning');
+      return false;
     }
 
     if (this.password !== this.confirmPassword) {
-      await this.presentToast('Las contraseñas no coinciden', 'danger');
-      return;
+      await this.presentToast('Las contraseñas no coinciden', 'warning');
+      return false;
     }
 
-    if (!this.validateName(this.firstName) || !this.validateName(this.lastName)) {
-      await this.presentToast('El nombre y apellido no deben contener caracteres especiales', 'warning');
-      return;
+    if (!this.firstName?.trim() || !this.lastName?.trim()) {
+      await this.presentToast('El nombre y apellido son obligatorios', 'warning');
+      return false;
     }
 
-    const userExists = this.users.some(user => user.email === this.email);
-
-    if (userExists) {
-      await this.presentToast('Este usuario ya está registrado', 'warning');
-    } else {
-      this.users.push({ 
-        email: this.email, 
-        password: this.password, 
-        firstName: this.firstName, 
-        lastName: this.lastName 
-      });
-      await this.presentToast('Registro exitoso', 'success');
-      this.navCtrl.navigateForward('/login');
-    }
+    return true;
   }
 
   validateEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    return emailRegex.test(email.trim());
   }
 
   validatePassword(password: string): boolean {
@@ -73,18 +118,22 @@ export class RegisterPage {
   }
 
   validateName(name: string): boolean {
-    const nameRegex = /^[a-zA-Z\s]+$/;
-    return nameRegex.test(name);
+    const nameRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
+    return nameRegex.test(name.trim());
   }
 
   async presentToast(message: string, color: string) {
     const toast = await this.toastController.create({
       message: message,
-      duration: 2000,
+      duration: 3000,
       position: 'bottom',
-      color: color
+      color: color,
+      buttons: [{
+        text: 'Cerrar',
+        role: 'cancel'
+      }]
     });
-    toast.present();
+    await toast.present();
   }
 
   goToLogin() {

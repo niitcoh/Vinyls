@@ -205,11 +205,19 @@ export class DatabaseService {
 
   // Authentication method
   authenticateUser(username: string, password: string): Observable<User | null> {
-    return this.executeSQL(
-      'SELECT * FROM Users WHERE username = ? AND password = ?',
-      [username, password]
-    ).pipe(
-      map(data => data.values && data.values.length > 0 ? data.values[0] as User : null)
+    const query = `
+      SELECT * FROM Users 
+      WHERE (username = ? OR email = ?) 
+      AND password = ? 
+      LIMIT 1
+    `;
+    return this.executeSQL(query, [username, username, password]).pipe(
+      map(data => {
+        if (data.values && data.values.length > 0) {
+          return data.values[0] as User;
+        }
+        return null;
+      })
     );
   }
 

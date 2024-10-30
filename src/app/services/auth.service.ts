@@ -9,27 +9,54 @@ export class AuthService {
   private _isLoggedIn: boolean = false;
 
   constructor() {
-    console.log('AuthService inicializado');
+    this.loadStoredUserData();
+  }
+
+  private loadStoredUserData() {
+    const storedEmail = localStorage.getItem('userEmail');
+    const storedRole = localStorage.getItem('userRole');
+    const storedLoginStatus = localStorage.getItem('isLoggedIn');
+
+    if (storedEmail && storedRole && storedLoginStatus) {
+      this._userEmail = storedEmail;
+      this._userRole = storedRole;
+      this._isLoggedIn = storedLoginStatus === 'true';
+      console.log('Datos de usuario cargados del almacenamiento:', {
+        email: this._userEmail,
+        role: this._userRole,
+        isLoggedIn: this._isLoggedIn
+      });
+    }
+  }
+
+  private saveUserData() {
+    localStorage.setItem('userEmail', this._userEmail);
+    localStorage.setItem('userRole', this._userRole);
+    localStorage.setItem('isLoggedIn', this._isLoggedIn.toString());
   }
 
   get userEmail(): string {
+    console.log('Obteniendo email de usuario:', this._userEmail);
     return this._userEmail;
   }
 
   get userRole(): string {
+    console.log('Obteniendo rol de usuario:', this._userRole);
     return this._userRole;
   }
 
   get isLoggedIn(): boolean {
+    console.log('Verificando estado de login:', this._isLoggedIn);
     return this._isLoggedIn;
   }
 
   login(email: string, role: string) {
-    console.log('Iniciando sesión con email:', email, 'y rol:', role);
+    console.log('Iniciando sesión con:', { email, role });
     this._userEmail = email;
     this._userRole = role;
     this._isLoggedIn = true;
-    console.log('Sesión iniciada. Estado actual:', this.getStatus());
+    this.saveUserData();
+    console.log('Sesión iniciada correctamente. Estado actual:', this.getStatus());
   }
 
   logout() {
@@ -37,17 +64,10 @@ export class AuthService {
     this._userEmail = '';
     this._userRole = '';
     this._isLoggedIn = false;
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('isLoggedIn');
     console.log('Sesión cerrada. Estado actual:', this.getStatus());
-  }
-
-  isAuthenticated(): boolean {
-    console.log('Verificando autenticación. Estado:', this._isLoggedIn);
-    return this._isLoggedIn;
-  }
-
-  getUserRole(): string {
-    console.log('Obteniendo rol de usuario:', this._userRole);
-    return this._userRole;
   }
 
   private getStatus(): string {

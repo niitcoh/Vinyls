@@ -1,16 +1,12 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { RouteReuseStrategy } from '@angular/router';
-
 import { IonicModule, IonicRouteStrategy } from '@ionic/angular';
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
-
-// Importar Capacitor y SQLite
+import { SQLite } from '@awesome-cordova-plugins/sqlite/ngx';
 import { Capacitor } from '@capacitor/core';
-import { CapacitorSQLite } from '@capacitor-community/sqlite';
-
-import { DatabaseService } from './services/database.service';
+import { CapacitorSQLite, SQLiteConnection } from '@capacitor-community/sqlite';
 
 @NgModule({
   declarations: [AppComponent],
@@ -20,16 +16,8 @@ import { DatabaseService } from './services/database.service';
     AppRoutingModule
   ],
   providers: [
-    DatabaseService,
-    { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
-    { provide: CapacitorSQLite, useFactory: () => {
-      if (Capacitor.isNativePlatform()) {
-        return CapacitorSQLite;
-      } else {
-        // Para entornos web, podrías usar una implementación alternativa o un mock
-        return {};
-      }
-    }}
+    SQLite,
+    { provide: RouteReuseStrategy, useClass: IonicRouteStrategy }
   ],
   bootstrap: [AppComponent],
 })

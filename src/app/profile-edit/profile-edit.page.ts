@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { NavController, ToastController, LoadingController } from '@ionic/angular';
+import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { DatabaseService } from '../services/database.service';
 import { User } from '../models/user.model';
@@ -16,6 +17,7 @@ export class ProfileEditPage implements OnInit {
   isAdmin: boolean = false;
   loading: boolean = false;
   photoLoading: boolean = false;
+  errorMessage: string = '';
 
   constructor(
     private navCtrl: NavController,
@@ -23,115 +25,115 @@ export class ProfileEditPage implements OnInit {
     private loadingController: LoadingController,
     public authService: AuthService,
     private databaseService: DatabaseService
-  ) {}
-
-  ngOnInit() {
-    this.checkLoginStatus();
+  ) {
+    console.log('ProfileEditPage constructor');
   }
 
-  async checkLoginStatus() {
-    if (!this.authService.isLoggedIn) {
-      await this.presentToast('Acceso denegado. Por favor, inicie sesión.');
-      this.navCtrl.navigateRoot('/login');
-      return;
-    }
-
-    this.isAdmin = this.authService.userRole === 'admin';
-    await this.loadCurrentUser();
-    if (this.isAdmin) {
-      await this.loadAllUsers();
-    }
+  async ngOnInit() {
+    console.log('ProfileEditPage ngOnInit');
+    await this.initializeProfile();
   }
 
-  async loadCurrentUser() {
-    this.loading = true;
-    const userEmail = this.authService.userEmail;
-    
-    if (!userEmail) {
-      await this.presentToast('Error: No se encontró el email del usuario');
-      this.loading = false;
-      return;
-    }
+  async ionViewWillEnter() {
+    console.log('ProfileEditPage ionViewWillEnter');
+    await this.initializeProfile();
+  }
 
-    console.log('Cargando usuario con email:', userEmail);
+  private async initializeProfile() {
+    console.log('Initializing profile');
+    const loading = await this.showLoading('Cargando perfil...');
 
-    this.databaseService.getUserByEmail(userEmail).subscribe({
-      next: (user) => {
-        if (user) {
-          this.currentUser = user;
-          console.log('Usuario cargado:', this.currentUser);
-        } else {
-          console.error('No se encontró el usuario con el email:', userEmail);
-          this.presentToast('No se pudo encontrar la información del usuario.');
+    try {
+      // Esperar a que la base de datos esté lista
+      await this.databaseService.waitForDatabase();
+      
+      // Verificar autenticación
+      if (!this.authService.isLoggedIn) {
+        throw new Error('Usuario no autenticado');
+      }
+
+      const userEmail = this.authService.userEmail;
+      if (!userEmail) {
+        throw new Error('Email de usuario no encontrado');
+      }
+
+      console.log('Loading user data for:', userEmail);
+      this.isAdmin = this.authService.userRole === 'admin';
+
+      // Cargar datos del usuario
+      const user = await firstValueFrom(this.databaseService.getUserByEmail(userEmail));
+      if (user) {
+        this.currentUser = user;
+        console.log('User data loaded:', this.currentUser);
+        
+        // Si es admin, cargar lista de usuarios
+        if (this.isAdmin) {
+          const allUsers = await firstValueFrom(this.databaseService.getUsers());
+          this.users = allUsers;
+          console.log('All users loaded:', this.users);
         }
-        this.loading = false;
-      },
-      error: (error) => {
-        console.error('Error al cargar el usuario:', error);
-        this.presentToast('Error al cargar la información del usuario');
-        this.loading = false;
+      } else {
+        throw new Error('Usuario no encontrado');
       }
-    });
-  }
-
-  async loadAllUsers() {
-    this.loading = true;
-    this.databaseService.getUsers().subscribe({
-      next: (users) => {
-        this.users = users;
-        console.log('Usuarios cargados:', this.users);
-        this.loading = false;
-      },
-      error: async (error) => {
-        console.error('Error al cargar los usuarios:', error);
-        await this.presentToast('Error al cargar la lista de usuarios');
-        this.loading = false;
-      }
-    });
+    } catch (error) {
+      console.error('Error loading profile:', error);
+      this.errorMessage = error instanceof Error ? error.message : 'Error al cargar el perfil';
+      await this.showToast(this.errorMessage);
+      this.navCtrl.navigateRoot('/login');
+    } finally {
+      this.loading = false;
+      await loading.dismiss();
+    }
   }
 
   async saveUser() {
     if (!this.currentUser) {
-      await this.presentToast('Error: No hay usuario para guardar');
+      await this.showToast('Error: No hay usuario para guardar');
       return;
     }
 
-    const loading = await this.presentLoading('Guardando cambios...');
+    const loading = await this.showLoading('Guardando cambios...');
 
     try {
-      const result = await this.databaseService.updateUser(this.currentUser).toPromise();
+      console.log('Saving user changes:', this.currentUser);
+      const result = await firstValueFrom(this.databaseService.updateUser(this.currentUser));
       if (result) {
-        await this.presentToast('Perfil actualizado con éxito.');
+        await this.showToast('Perfil actualizado con éxito');
       } else {
         throw new Error('Error al actualizar el perfil');
       }
     } catch (error) {
-      console.error('Error al guardar los cambios:', error);
-      await this.presentToast('Error al guardar los cambios.');
+      console.error('Error saving user:', error);
+      await this.showToast('Error al guardar los cambios');
     } finally {
-      loading.dismiss();
+      await loading.dismiss();
     }
   }
 
   async updatePassword() {
-    if (!this.newPassword.trim()) {
-      await this.presentToast('Por favor, ingrese una nueva contraseña.');
+    if (!this.newPassword.trim() || !this.currentUser?.id) {
+      await this.showToast('Por favor, ingrese una nueva contraseña');
       return;
     }
 
-    const loading = await this.presentLoading('Actualizando contraseña...');
+    const loading = await this.showLoading('Actualizando contraseña...');
 
     try {
-      // Aquí deberías implementar la lógica para actualizar la contraseña en la base de datos
-      // Por ahora, solo simularemos una actualización exitosa
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      await this.presentToast('Contraseña actualizada con éxito.');
-      this.newPassword = '';
+      const result = await firstValueFrom(
+        this.databaseService.updateUserPassword(this.currentUser.id, this.newPassword)
+      );
+      
+      if (result) {
+        this.newPassword = '';
+        await this.showToast('Contraseña actualizada con éxito');
+      } else {
+        throw new Error('Error al actualizar la contraseña');
+      }
     } catch (error) {
-      console.error('Error al actualizar la contraseña:', error);
-      await this.presentToast('Error al actualizar la contraseña.');
+      console.error('Error updating password:', error);
+      await this.showToast('Error al actualizar la contraseña');
     } finally {
-      loading.dismiss();
+      await loading.dismiss();
     }
   }
 
@@ -140,71 +142,81 @@ export class ProfileEditPage implements OnInit {
     if (!file || !this.currentUser) return;
 
     this.photoLoading = true;
-    const loading = await this.presentLoading('Cargando imagen...');
+    const loading = await this.showLoading('Cargando imagen...');
 
     try {
       const reader = new FileReader();
-      reader.onload = (e: any) => {
+      reader.onload = async (e: any) => {
         if (this.currentUser) {
           this.currentUser.photo = e.target.result;
           this.photoLoading = false;
-          loading.dismiss();
-          this.presentToast('Foto actualizada con éxito.');
-          this.saveUser(); // Llama a saveUser para guardar la foto en la base de datos
+          await loading.dismiss();
+          await this.showToast('Foto actualizada con éxito');
+          await this.saveUser();
         }
       };
-      reader.onerror = () => {
+      reader.onerror = async () => {
         this.photoLoading = false;
-        loading.dismiss();
-        this.presentToast('Error al cargar la imagen.');
+        await loading.dismiss();
+        await this.showToast('Error al cargar la imagen');
       };
       reader.readAsDataURL(file);
     } catch (error) {
       this.photoLoading = false;
-      loading.dismiss();
-      await this.presentToast('Error al procesar la imagen.');
+      await loading.dismiss();
+      await this.showToast('Error al procesar la imagen');
     }
   }
 
   async deleteUser(email: string) {
     if (!this.isAdmin) {
-      await this.presentToast('Solo los administradores pueden eliminar usuarios.');
+      await this.showToast('Solo los administradores pueden eliminar usuarios');
       return;
     }
 
     if (email === this.authService.userEmail) {
-      await this.presentToast('No puedes eliminar tu propio usuario.');
+      await this.showToast('No puedes eliminar tu propio usuario');
       return;
     }
 
-    const loading = await this.presentLoading('Eliminando usuario...');
+    const loading = await this.showLoading('Eliminando usuario...');
 
     try {
-      // Aquí deberías implementar la lógica para eliminar el usuario de la base de datos
-      // Por ahora, solo simularemos una eliminación exitosa
-      this.users = this.users.filter(user => user.email !== email);
-      await this.presentToast('Usuario eliminado con éxito.');
+      const result = await firstValueFrom(this.databaseService.deleteUser(email));
+      if (result) {
+        this.users = this.users.filter(user => user.email !== email);
+        await this.showToast('Usuario eliminado con éxito');
+      } else {
+        throw new Error('No se pudo eliminar el usuario');
+      }
     } catch (error) {
-      console.error('Error al eliminar el usuario:', error);
-      await this.presentToast('Error al eliminar el usuario.');
+      console.error('Error deleting user:', error);
+      await this.showToast('Error al eliminar el usuario');
     } finally {
-      loading.dismiss();
+      await loading.dismiss();
     }
   }
 
-  async presentToast(message: string) {
+  // Métodos de utilidad
+  private async showToast(message: string, duration: number = 2000) {
     const toast = await this.toastController.create({
-      message: message,
-      duration: 2000,
+      message,
+      duration,
       position: 'bottom',
+      buttons: [
+        {
+          text: 'OK',
+          role: 'cancel'
+        }
+      ],
       cssClass: 'custom-toast'
     });
     await toast.present();
   }
 
-  async presentLoading(message: string) {
+  private async showLoading(message: string) {
     const loading = await this.loadingController.create({
-      message: message,
+      message,
       spinner: 'crescent',
       cssClass: 'custom-loading'
     });
